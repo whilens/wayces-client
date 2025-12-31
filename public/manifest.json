@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Wayces",
+  "name": "Wayces - Интернет-магазин",
+  "description": "Онлайн магазин Wayces - качественные товары с доставкой",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,18 +9,31 @@
       "type": "image/x-icon"
     },
     {
-      "src": "logo192.png",
+      "src": "192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
-      "src": "logo512.png",
+      "src": "256.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "256x256",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait-primary",
+  "theme_color": "#667eea",
+  "background_color": "#ffffff",
+  "categories": ["shopping", "ecommerce"],
+  "lang": "ru",
+  "dir": "ltr"
 }

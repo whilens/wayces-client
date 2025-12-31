@@ -10,6 +10,7 @@ import {
   clearError,
 } from '../../store/slices/userSlice';
 import PhoneInput from '../PhoneInput/PhoneInput';
+import { linkPushSubscription } from '../../utils/pushSubscriptionLinker';
 import './AuthModal.css';
 
 const AuthModal = () => {
@@ -62,10 +63,15 @@ const AuthModal = () => {
     };
   }, [isOpen]);
 
-  // Редирект после авторизации
+  // Редирект после авторизации и привязка push-подписки
   useEffect(() => {
-    if (isAuthenticated && redirectTo) {
-      navigate(redirectTo);
+    if (isAuthenticated) {
+      // Привязываем push-подписку к аккаунту (если есть)
+      linkPushSubscription();
+      
+      if (redirectTo) {
+        navigate(redirectTo);
+      }
     }
   }, [isAuthenticated, redirectTo, navigate]);
 

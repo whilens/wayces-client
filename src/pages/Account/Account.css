@@ -177,6 +177,56 @@
   margin: 0;
 }
 
+/* Стили для чекбокса push-уведомлений */
+.account__form-group .ant-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.account__form-group .ant-checkbox-wrapper:hover {
+  color: var(--accent-primary);
+}
+
+.account__form-group .ant-checkbox-wrapper .ant-checkbox {
+  margin-top: 0;
+}
+
+.account__form-group .ant-checkbox-wrapper .ant-checkbox-inner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-color: var(--border-color);
+  border-width: 2px;
+  transition: all 0.2s ease;
+}
+
+.account__form-group .ant-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.account__form-group .ant-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner::after {
+  border-color: #fff;
+  width: 0.375rem;
+  height: 0.625rem;
+  top: 0.125rem;
+  left: 0.375rem;
+}
+
+.account__form-group .ant-checkbox-wrapper.ant-checkbox-wrapper-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.account__form-group .ant-checkbox-wrapper.ant-checkbox-wrapper-disabled:hover {
+  color: var(--text-primary);
+}
+
 .account__save-button {
   padding: 0.875rem 2rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

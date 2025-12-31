@@ -8,6 +8,8 @@ import { refreshUserToken } from './store/slices/userSlice';
 import { setTheme } from './store/slices/uiSlice';
 import Header from './components/Header/Header';
 import AuthModal from './components/AuthModal/AuthModal';
+import InstallPrompt from './components/InstallPrompt/InstallPrompt';
+import PushNotificationPrompt from './components/PushNotificationPrompt/PushNotificationPrompt';
 import AdminProtectedRoute from './components/AdminProtectedRoute/AdminProtectedRoute';
 import UserProtectedRoute from './components/UserProtectedRoute/UserProtectedRoute';
 import { routesConfig } from './config/routesConfig';
@@ -68,6 +70,8 @@ function App() {
       <div className="App">
         <Header />
         <AuthModal />
+        <InstallPrompt />
+        <PushNotificationPrompt />
         <main className="App__main">
           <Suspense fallback={<LoadingFallback />}>
             <Routes>

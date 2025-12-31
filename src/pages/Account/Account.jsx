@@ -8,7 +8,8 @@ import { formatPrice } from '../../utils/helpers';
 import { useAsyncDataLoader } from '../../hooks/useAsyncDataLoader';
 import { buildFormData } from '../../utils/formDataBuilder';
 import { getImageUrl } from '../../utils/imageUtils';
-import { notification } from 'antd';
+import { notification, Checkbox } from 'antd';
+import { pushSubscriptionsAPI } from '../../services/api';
 import './Account.css';
 
 const Account = () => {
@@ -71,11 +72,17 @@ const Account = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false);
 
+  // Push-уведомления
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [isLoadingPushStatus, setIsLoadingPushStatus] = useState(false);
+  const [isTogglingPush, setIsTogglingPush] = useState(false);
+
   // Загрузка данных профиля
   useEffect(() => {
     if (isAuthenticated) {
       loadProfile();
       loadFavorites();
+      loadPushSubscriptionStatus();
       // loadStatistics, loadOrders, loadReviews вызываются автоматически через useAsyncDataLoader
     }
   }, [isAuthenticated]);
@@ -109,6 +116,178 @@ const Account = () => {
       setIsLoadingFavorites(false);
     }
   };
+
+  // Загрузка статуса push-подписки
+  const loadPushSubscriptionStatus = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushEnabled(false);
+      return;
+    }
+
+    setIsLoadingPushStatus(true);
+    try {
+      // Сначала проверяем локально, есть ли активная подписка
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      
+      if (!subscription) {
+        setPushEnabled(false);
+        return;
+      }
+
+      // Если есть локальная подписка, проверяем статус на сервере
+      const response = await pushSubscriptionsAPI.getSubscriptionStatus();
+      setPushEnabled(response.data.isSubscribed || false);
+    } catch (err) {
+      console.error('Ошибка загрузки статуса push-подписки:', err);
+      // Проверяем локально, есть ли подписка
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        setPushEnabled(!!subscription);
+      } catch (error) {
+        setPushEnabled(false);
+      }
+    } finally {
+      setIsLoadingPushStatus(false);
+    }
+  };
+
+  // Переключение push-уведомлений
+  const handlePushToggle = async (checked) => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      notification.warning({
+        message: 'Не поддерживается',
+        description: 'Ваш браузер не поддерживает push-уведомления',
+        placement: 'topRight',
+      });
+      return;
+    }
+
+    setIsTogglingPush(true);
+    try {
+      if (checked) {
+        // Включаем push-уведомления
+        await enablePushNotifications();
+      } else {
+        // Выключаем push-уведомления
+        await disablePushNotifications();
+      }
+      setPushEnabled(checked);
+    } catch (error) {
+      console.error('Ошибка переключения push-уведомлений:', error);
+      notification.error({
+        message: 'Ошибка',
+        description: 'Не удалось изменить настройки уведомлений',
+        placement: 'topRight',
+      });
+      // Возвращаем предыдущее состояние
+      setPushEnabled(!checked);
+    } finally {
+      setIsTogglingPush(false);
+    }
+  };
+
+  // Включение push-уведомлений
+  const enablePushNotifications = async () => {
+    // Загружаем VAPID ключ
+    const response = await pushSubscriptionsAPI.getVapidPublicKey();
+    const vapidPublicKey = response.data.publicKey;
+
+    if (!vapidPublicKey) {
+      throw new Error('VAPID ключ не настроен');
+    }
+
+    // Запрашиваем разрешение
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      throw new Error('Разрешение на уведомления не получено');
+    }
+
+    // Создаем подписку
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+    });
+
+    // Сохраняем подписку на сервере
+    await pushSubscriptionsAPI.subscribe({
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: arrayBufferToBase64(subscription.getKey('p256dh')),
+        auth: arrayBufferToBase64(subscription.getKey('auth')),
+      },
+      userAgent: navigator.userAgent,
+    });
+
+    notification.success({
+      message: 'Уведомления включены',
+      description: 'Вы будете получать уведомления о новых товарах и скидках',
+      placement: 'topRight',
+    });
+  };
+
+  // Выключение push-уведомлений
+  const disablePushNotifications = async () => {
+    try {
+      // Получаем текущую подписку
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (subscription) {
+        // Получаем ID подписки с сервера
+        const response = await pushSubscriptionsAPI.getSubscriptions();
+        const subscriptions = response.data.subscriptions || [];
+
+        // Отписываемся от push
+        await subscription.unsubscribe();
+
+        // Удаляем подписку с сервера
+        if (subscriptions.length > 0) {
+          for (const sub of subscriptions) {
+            if (sub.endpoint === subscription.endpoint) {
+              await pushSubscriptionsAPI.unsubscribe(sub.id);
+              break;
+            }
+          }
+        }
+      }
+
+      notification.success({
+        message: 'Уведомления выключены',
+        placement: 'topRight',
+      });
+    } catch (error) {
+      console.error('Ошибка отписки:', error);
+      throw error;
+    }
+  };
+
+  // Вспомогательные функции для конвертации ключей
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  }
 
   // Сохранение профиля
   const handleSaveProfile = async (e) => {
@@ -361,6 +540,21 @@ const Account = () => {
                       disabled
                     />
                     <p className="account__hint">Телефон нельзя изменить</p>
+                  </div>
+
+                  <div className="account__form-group">
+                    <Checkbox
+                      checked={pushEnabled}
+                      onChange={(e) => handlePushToggle(e.target.checked)}
+                      disabled={isTogglingPush || isLoadingPushStatus || !('serviceWorker' in navigator) || !('PushManager' in window)}
+                    >
+                      Получать push-уведомления о новых товарах и скидках
+                    </Checkbox>
+                    {isTogglingPush && (
+                      <p className="account__hint" style={{ marginTop: '0.5rem' }}>
+                        Обновление настроек...
+                      </p>
+                    )}
                   </div>
 
                   <button

@@ -268,5 +268,15 @@ export const searchAPI = {
   getSimilar: (productId, limit = 6) => api.get(`/search/similar/${productId}`, { params: { limit } }),
 };
 
+// API методы для push-подписок
+export const pushSubscriptionsAPI = {
+  subscribe: (subscription) => api.post('/push-subscriptions', subscription),
+  getSubscriptions: () => api.get('/push-subscriptions'),
+  getSubscriptionStatus: () => api.get('/push-subscriptions/status'),
+  unsubscribe: (id) => api.delete(`/push-subscriptions/${id}`),
+  getVapidPublicKey: () => api.get('/push-subscriptions/vapid-public-key'),
+  linkSubscription: () => api.post('/push-subscriptions/link'),
+};
+
 export default api;
 
