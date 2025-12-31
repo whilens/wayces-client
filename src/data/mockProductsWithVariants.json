@@ -1,0 +1,393 @@
+[
+  {
+    "id": 1,
+    "name": "Смартфон iPhone 15 Pro Max",
+    "basePrice": 129999,
+    "category": "electronics",
+    "rating": 4.9,
+    "reviews": 89,
+    "description": "Флагманский смартфон с титановым корпусом, чипом A17 Pro, камерой 48 МП и дисплеем ProMotion. Максимальная производительность и качество.",
+    "specifications": {
+      "display": "6.7\", 2796x1290, Super Retina XDR, 120 Гц",
+      "processor": "Apple A17 Pro",
+      "camera": "48+12+12 МП",
+      "battery": "4441 мА·ч",
+      "connectivity": "5G, Wi-Fi 6E, Bluetooth 5.3"
+    },
+    "variants": {
+      "color": {
+        "name": "Цвет",
+        "type": "color",
+        "options": [
+          {
+            "id": "color-natural",
+            "value": "Натуральный титан",
+            "color": "#8B7355",
+            "images": [
+              "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          },
+          {
+            "id": "color-blue",
+            "value": "Синий титан",
+            "color": "#4A90E2",
+            "images": [
+              "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          },
+          {
+            "id": "color-white",
+            "value": "Белый титан",
+            "color": "#F5F5F5",
+            "images": [
+              "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          },
+          {
+            "id": "color-black",
+            "value": "Черный титан",
+            "color": "#1C1C1E",
+            "images": [
+              "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          }
+        ],
+        "default": "color-natural"
+      },
+      "storage": {
+        "name": "Память",
+        "type": "button",
+        "options": [
+          {
+            "id": "storage-256",
+            "value": "256 ГБ",
+            "priceModifier": 0
+          },
+          {
+            "id": "storage-512",
+            "value": "512 ГБ",
+            "priceModifier": 20000
+          },
+          {
+            "id": "storage-1tb",
+            "value": "1 ТБ",
+            "priceModifier": 40000
+          }
+        ],
+        "default": "storage-256"
+      }
+    },
+    "defaultImage": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&h=500&fit=crop"
+  },
+  {
+    "id": 2,
+    "name": "Беспроводные наушники Sony WH-1000XM5",
+    "basePrice": 24999,
+    "category": "electronics",
+    "rating": 4.8,
+    "reviews": 124,
+    "description": "Премиальные наушники с активным шумоподавлением, превосходным звуком и автономностью до 30 часов. Идеально подходят для музыки, звонков и путешествий.",
+    "specifications": {
+      "noiseCancellation": "Активное шумоподавление",
+      "battery": "30 часов",
+      "connectivity": "Bluetooth 5.2, NFC",
+      "weight": "250 г"
+    },
+    "variants": {
+      "color": {
+        "name": "Цвет",
+        "type": "color",
+        "options": [
+          {
+            "id": "color-black",
+            "value": "Черный",
+            "color": "#000000",
+            "images": [
+              "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          },
+          {
+            "id": "color-silver",
+            "value": "Серебристый",
+            "color": "#C0C0C0",
+            "images": [
+              "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          }
+        ],
+        "default": "color-black"
+      }
+    },
+    "defaultImage": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&h=500&fit=crop"
+  },
+  {
+    "id": 3,
+    "name": "Кроссовки Nike Air Max 270",
+    "basePrice": 8999,
+    "category": "sports",
+    "rating": 4.6,
+    "reviews": 189,
+    "description": "Спортивные кроссовки с технологией Air Max для максимального комфорта. Идеальны для бега, тренировок и повседневной носки.",
+    "specifications": {
+      "material": "Текстиль, синтетика",
+      "sole": "Резина",
+      "weight": "320 г"
+    },
+    "variants": {
+      "color": {
+        "name": "Цвет",
+        "type": "color",
+        "options": [
+          {
+            "id": "color-black",
+            "value": "Черный",
+            "color": "#000000",
+            "images": [
+              "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          },
+          {
+            "id": "color-white",
+            "value": "Белый",
+            "color": "#FFFFFF",
+            "images": [
+              "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          },
+          {
+            "id": "color-red",
+            "value": "Красный",
+            "color": "#DC143C",
+            "images": [
+              "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          }
+        ],
+        "default": "color-black"
+      },
+      "size": {
+        "name": "Размер",
+        "type": "button",
+        "options": [
+          {
+            "id": "size-40",
+            "value": "40",
+            "priceModifier": 0
+          },
+          {
+            "id": "size-41",
+            "value": "41",
+            "priceModifier": 0
+          },
+          {
+            "id": "size-42",
+            "value": "42",
+            "priceModifier": 0
+          },
+          {
+            "id": "size-43",
+            "value": "43",
+            "priceModifier": 0
+          },
+          {
+            "id": "size-44",
+            "value": "44",
+            "priceModifier": 0
+          },
+          {
+            "id": "size-45",
+            "value": "45",
+            "priceModifier": 0
+          }
+        ],
+        "default": "size-42"
+      }
+    },
+    "defaultImage": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=500&fit=crop"
+  },
+  {
+    "id": 4,
+    "name": "Куртка-пуховик Uniqlo Ultra Light Down",
+    "basePrice": 4999,
+    "category": "clothing",
+    "rating": 4.7,
+    "reviews": 145,
+    "description": "Легкая и теплая куртка-пуховик для холодной погоды. Компактная упаковка, водоотталкивающее покрытие, стильный дизайн.",
+    "specifications": {
+      "material": "Полиэстер, пух",
+      "filling": "90% пух, 10% перо",
+      "weight": "230 г"
+    },
+    "variants": {
+      "color": {
+        "name": "Цвет",
+        "type": "color",
+        "options": [
+          {
+            "id": "color-navy",
+            "value": "Темно-синий",
+            "color": "#001F3F",
+            "images": [
+              "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1539533018447-63fc4c3f1438?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          },
+          {
+            "id": "color-black",
+            "value": "Черный",
+            "color": "#000000",
+            "images": [
+              "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1539533018447-63fc4c3f1438?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          },
+          {
+            "id": "color-beige",
+            "value": "Бежевый",
+            "color": "#F5F5DC",
+            "images": [
+              "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1539533018447-63fc4c3f1438?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          }
+        ],
+        "default": "color-navy"
+      },
+      "size": {
+        "name": "Размер",
+        "type": "button",
+        "options": [
+          {
+            "id": "size-s",
+            "value": "S",
+            "priceModifier": 0
+          },
+          {
+            "id": "size-m",
+            "value": "M",
+            "priceModifier": 0
+          },
+          {
+            "id": "size-l",
+            "value": "L",
+            "priceModifier": 0
+          },
+          {
+            "id": "size-xl",
+            "value": "XL",
+            "priceModifier": 0
+          }
+        ],
+        "default": "size-m"
+      }
+    },
+    "defaultImage": "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&h=500&fit=crop"
+  },
+  {
+    "id": 5,
+    "name": "Ноутбук MacBook Pro 16 M3",
+    "basePrice": 249999,
+    "category": "electronics",
+    "rating": 4.9,
+    "reviews": 67,
+    "description": "Мощный ноутбук для профессионалов с чипом M3, дисплеем Liquid Retina XDR и автономностью до 22 часов. Идеален для работы и творчества.",
+    "specifications": {
+      "display": "16.2\", 3456x2234, Liquid Retina XDR",
+      "processor": "Apple M3 Pro",
+      "memory": "18 ГБ",
+      "storage": "512 ГБ SSD",
+      "battery": "22 часа"
+    },
+    "variants": {
+      "color": {
+        "name": "Цвет",
+        "type": "color",
+        "options": [
+          {
+            "id": "color-silver",
+            "value": "Серебристый",
+            "color": "#C0C0C0",
+            "images": [
+              "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          },
+          {
+            "id": "color-space-gray",
+            "value": "Космический серый",
+            "color": "#4E4E4E",
+            "images": [
+              "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=500&fit=crop",
+              "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&h=500&fit=crop"
+            ],
+            "priceModifier": 0
+          }
+        ],
+        "default": "color-silver"
+      },
+      "memory": {
+        "name": "Память",
+        "type": "button",
+        "options": [
+          {
+            "id": "memory-512",
+            "value": "512 ГБ",
+            "priceModifier": 0
+          },
+          {
+            "id": "memory-1tb",
+            "value": "1 ТБ",
+            "priceModifier": 30000
+          },
+          {
+            "id": "memory-2tb",
+            "value": "2 ТБ",
+            "priceModifier": 60000
+          }
+        ],
+        "default": "memory-512"
+      },
+      "ram": {
+        "name": "Оперативная память",
+        "type": "button",
+        "options": [
+          {
+            "id": "ram-18",
+            "value": "18 ГБ",
+            "priceModifier": 0
+          },
+          {
+            "id": "ram-36",
+            "value": "36 ГБ",
+            "priceModifier": 40000
+          }
+        ],
+        "default": "ram-18"
+      }
+    },
+    "defaultImage": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&h=500&fit=crop"
+  }
+]
+

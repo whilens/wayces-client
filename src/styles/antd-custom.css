@@ -1,0 +1,66 @@
+/* Кастомные стили для Ant Design уведомлений */
+
+/* Переопределение стилей notification */
+.ant-notification {
+  z-index: 9999;
+}
+
+.ant-notification-notice {
+  border-radius: 0.5rem;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.15);
+  padding: 1rem 1.25rem;
+}
+
+.ant-notification-notice-message {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.ant-notification-notice-description {
+  font-size: 0.9375rem;
+  color: #4a5568;
+  line-height: 1.5;
+}
+
+/* Success notification */
+.ant-notification-notice-success {
+  background: #ffffff;
+  border-left: 0.25rem solid #48bb78;
+}
+
+.ant-notification-notice-success .ant-notification-notice-icon {
+  color: #48bb78;
+}
+
+/* Error notification */
+.ant-notification-notice-error {
+  background: #ffffff;
+  border-left: 0.25rem solid #e53e3e;
+}
+
+.ant-notification-notice-error .ant-notification-notice-icon {
+  color: #e53e3e;
+}
+
+/* Info notification */
+.ant-notification-notice-info {
+  background: #ffffff;
+  border-left: 0.25rem solid #667eea;
+}
+
+.ant-notification-notice-info .ant-notification-notice-icon {
+  color: #667eea;
+}
+
+/* Warning notification */
+.ant-notification-notice-warning {
+  background: #ffffff;
+  border-left: 0.25rem solid #ed8936;
+}
+
+.ant-notification-notice-warning .ant-notification-notice-icon {
+  color: #ed8936;
+}
+

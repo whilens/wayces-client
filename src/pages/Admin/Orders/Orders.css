@@ -1,0 +1,215 @@
+.admin-orders {
+  min-height: 100vh;
+  background: var(--bg-secondary);
+  padding: 2rem 0;
+}
+
+.admin-orders__container {
+  max-width: 75rem;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.admin-orders__header {
+  margin-bottom: 2rem;
+}
+
+.admin-orders__title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.admin-orders__filters {
+  margin-bottom: 1.5rem;
+}
+
+.admin-orders__filter-select {
+  padding: 0.5rem 1rem;
+  font-size: 0.9375rem;
+  border: 0.125rem solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.admin-orders__filter-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 0.1875rem rgba(102, 126, 234, 0.1);
+}
+
+.admin-orders__table-wrapper {
+  background: var(--card-bg);
+  border-radius: 0.75rem;
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.admin-orders__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-orders__table thead {
+  background: var(--bg-secondary);
+}
+
+.admin-orders__table th {
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 0.125rem solid #e2e8f0;
+}
+
+.admin-orders__sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.3s ease;
+}
+
+.admin-orders__sortable:hover {
+  color: var(--accent-primary);
+}
+
+.admin-orders__table td {
+  padding: 1rem;
+  border-bottom: 0.0625rem solid #e2e8f0;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+}
+
+.admin-orders__table tbody tr:hover {
+  background: var(--bg-secondary);
+}
+
+.admin-orders__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-orders__status {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.admin-orders__status--pending {
+  background: rgba(229, 62, 62, 0.1);
+  color: var(--error);
+}
+
+.admin-orders__status--paid {
+  background: rgba(56, 161, 105, 0.1);
+  color: var(--success);
+}
+
+.admin-orders__status--processing {
+  background: rgba(102, 126, 234, 0.1);
+  color: var(--accent-primary);
+}
+
+.admin-orders__status--shipped {
+  background: rgba(214, 158, 46, 0.1);
+  color: var(--warning);
+}
+
+.admin-orders__status--delivered {
+  background: rgba(56, 161, 105, 0.1);
+  color: var(--success);
+}
+
+.admin-orders__status--cancelled {
+  background: var(--border-color);
+  color: var(--text-secondary);
+}
+
+.admin-orders__view-button {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--accent-primary);
+  text-decoration: none;
+  border: 0.125rem solid #667eea;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.admin-orders__view-button:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+.admin-orders__empty {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem !important;
+}
+
+.admin-orders__error {
+  color: var(--error);
+  padding: 1rem;
+  background: rgba(229, 62, 62, 0.1);
+  border-radius: 0.5rem;
+}
+
+.admin-orders__pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.admin-orders__pagination-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--accent-primary);
+  background: var(--card-bg);
+  border: 0.125rem solid #667eea;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.admin-orders__pagination-button:hover:not(:disabled) {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+.admin-orders__pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-orders__pagination-info {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 48rem) {
+  .admin-orders {
+    padding: 1rem 0;
+  }
+
+  .admin-orders__container {
+    padding: 0 1rem;
+  }
+
+  .admin-orders__table-wrapper {
+    overflow-x: scroll;
+  }
+
+  .admin-orders__table {
+    min-width: 50rem;
+  }
+}
+

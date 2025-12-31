@@ -1,0 +1,224 @@
+.admin-categories {
+  padding: 2rem;
+  min-height: 100vh;
+  background: var(--bg-secondary);
+}
+
+.admin-categories__container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.admin-categories__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.admin-categories__back-button {
+  padding: 0.5rem 1rem;
+  background: var(--border-color);
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.2s;
+}
+
+.admin-categories__back-button:hover {
+  background: var(--border-hover);
+}
+
+.admin-categories__title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.admin-categories__content {
+  background: var(--card-bg);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.admin-categories__empty {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 2rem;
+  font-style: italic;
+}
+
+.admin-categories__error {
+  color: var(--error);
+  text-align: center;
+  padding: 2rem;
+}
+
+.admin-categories__tree-container {
+  padding: 1rem 0;
+}
+
+.admin-categories__tree {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.admin-categories__tree--level-0 {
+  padding-left: 0;
+}
+
+.admin-categories__tree--level-1 {
+  padding-left: 2rem;
+}
+
+.admin-categories__tree--level-2 {
+  padding-left: 4rem;
+}
+
+.admin-categories__tree-item {
+  margin-bottom: 0.5rem;
+}
+
+.admin-categories__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s;
+}
+
+.admin-categories__item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-hover);
+}
+
+.admin-categories__item-info {
+  flex: 1;
+}
+
+.admin-categories__item-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.admin-categories__item-slug {
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-family: monospace;
+  margin-left: 0.5rem;
+}
+
+.admin-categories__item-description {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.admin-categories__item-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-categories__add-button {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.admin-categories__add-button:hover {
+  transform: translateY(-0.125rem);
+  box-shadow: 0 0.5rem 1rem rgba(102, 126, 234, 0.3);
+}
+
+.admin-categories__edit-button {
+  padding: 0.5rem 1rem;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.admin-categories__edit-button:hover {
+  background: var(--accent-secondary);
+}
+
+.admin-categories__delete-button {
+  padding: 0.5rem 1rem;
+  background: var(--error);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.admin-categories__delete-button:hover {
+  background: rgba(229, 62, 62, 0.8);
+}
+
+.admin-categories__modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.admin-categories__form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.admin-categories__form-group label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.admin-categories__form-group small {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.admin-categories__config-button {
+  padding: 0.5rem 1rem;
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.admin-categories__config-button:hover {
+  background: var(--accent-secondary);
+}
+
