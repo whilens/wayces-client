@@ -10,6 +10,7 @@ import Header from './components/Header/Header';
 import AuthModal from './components/AuthModal/AuthModal';
 import InstallPrompt from './components/InstallPrompt/InstallPrompt';
 import PushNotificationPrompt from './components/PushNotificationPrompt/PushNotificationPrompt';
+import UpdateNotification from './components/UpdateNotification/UpdateNotification';
 import AdminProtectedRoute from './components/AdminProtectedRoute/AdminProtectedRoute';
 import UserProtectedRoute from './components/UserProtectedRoute/UserProtectedRoute';
 import { routesConfig } from './config/routesConfig';
@@ -72,6 +73,7 @@ function App() {
         <AuthModal />
         <InstallPrompt />
         <PushNotificationPrompt />
+        <UpdateNotification />
         <main className="App__main">
           <Suspense fallback={<LoadingFallback />}>
             <Routes>

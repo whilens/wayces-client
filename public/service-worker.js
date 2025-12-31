@@ -1,6 +1,9 @@
 // Service Worker для PWA
-const CACHE_NAME = 'wayces-v1';
-const RUNTIME_CACHE = 'wayces-runtime-v1';
+// Версия кеша - меняйте при обновлении приложения
+const CACHE_VERSION = 'v1.0.0';
+const CACHE_NAME = `wayces-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `wayces-runtime-${CACHE_VERSION}`;
+const UPDATE_CHECK_INTERVAL = 60 * 60 * 1000; // Проверка обновлений каждый час
 
 // Файлы для кэширования при установке
 // В development режиме пути могут отличаться, поэтому кэшируем только основные файлы
@@ -15,7 +18,7 @@ const STATIC_CACHE_URLS = [
 
 // Установка Service Worker
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing...');
+  console.log(`[Service Worker] Installing version ${CACHE_VERSION}...`);
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -30,7 +33,8 @@ self.addEventListener('install', (event) => {
         );
       })
       .then(() => {
-        console.log('[Service Worker] Installation complete, skipping waiting');
+        console.log('[Service Worker] Installation complete, activating immediately');
+        // Активируем сразу, чтобы новый SW начал работать
         return self.skipWaiting();
       })
       .catch(err => {
@@ -41,12 +45,13 @@ self.addEventListener('install', (event) => {
 
 // Активация Service Worker
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating...');
+  console.log(`[Service Worker] Activating version ${CACHE_VERSION}...`);
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
           .filter((cacheName) => {
+            // Удаляем все старые кеши
             return cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE;
           })
           .map((cacheName) => {
@@ -55,7 +60,22 @@ self.addEventListener('activate', (event) => {
           })
       );
     })
-    .then(() => self.clients.claim())
+    .then(() => {
+      // Заявляем контроль над всеми клиентами
+      return self.clients.claim();
+    })
+    .then(() => {
+      // Уведомляем все клиенты о новой версии
+      return self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: CACHE_VERSION,
+            message: 'Новая версия приложения доступна'
+          });
+        });
+      });
+    })
   );
 });
 
@@ -73,12 +93,8 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
       .then((cachedResponse) => {
-        // Возвращаем из кэша, если есть
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        // Иначе делаем запрос и кэшируем
+        // Стратегия: Network First с fallback на кеш
+        // Сначала пытаемся получить свежие данные из сети
         return fetch(event.request)
           .then((response) => {
             // Кэшируем только успешные GET запросы
@@ -96,6 +112,10 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => {
+            // Если сеть недоступна, используем кеш
+            if (cachedResponse) {
+              return cachedResponse;
+            }
             // Если запрос не удался и это HTML, возвращаем главную страницу
             if (event.request.destination === 'document') {
               return caches.match('/');
@@ -104,6 +124,63 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+// Обработка сообщений от клиента
+self.addEventListener('message', (event) => {
+  console.log('[Service Worker] Message received:', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    // Клиент просит активировать новый SW
+    self.skipWaiting();
+  }
+  
+  if (event.data && event.data.type === 'CHECK_UPDATE') {
+    // Клиент просит проверить обновления
+    checkForUpdates();
+  }
+});
+
+// Функция проверки обновлений
+async function checkForUpdates() {
+  try {
+    // Пытаемся загрузить новый service-worker.js
+    const response = await fetch('/service-worker.js', {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    
+    if (response.ok) {
+      const newScript = await response.text();
+      // Проверяем версию в новом скрипте
+      const versionMatch = newScript.match(/CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/);
+      
+      if (versionMatch && versionMatch[1] !== CACHE_VERSION) {
+        console.log(`[Service Worker] New version detected: ${versionMatch[1]} (current: ${CACHE_VERSION})`);
+        // Уведомляем клиентов о новой версии
+        const clients = await self.clients.matchAll();
+        clients.forEach((client) => {
+          client.postMessage({
+            type: 'UPDATE_AVAILABLE',
+            currentVersion: CACHE_VERSION,
+            newVersion: versionMatch[1]
+          });
+        });
+        return true; // Обновление найдено
+      }
+    }
+    return false; // Обновление не найдено
+  } catch (error) {
+    console.error('[Service Worker] Error checking for updates:', error);
+    return false;
+  }
+}
+
+// Периодическая проверка обновлений
+setInterval(() => {
+  checkForUpdates();
+}, UPDATE_CHECK_INTERVAL);
 
 // Обработка push-уведомлений
 self.addEventListener('push', (event) => {

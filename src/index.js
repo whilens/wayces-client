@@ -42,16 +42,45 @@ root.render(
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
 
-// Регистрация Service Worker для PWA
+// Регистрация Service Worker для PWA с автоматическим обновлением
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/service-worker.js')
-      .then((registration) => {
-        console.log('Service Worker registered successfully:', registration.scope);
-      })
-      .catch((error) => {
-        console.log('Service Worker registration failed:', error);
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/service-worker.js', {
+        updateViaCache: 'none' // Всегда проверяем обновления
       });
+      
+      console.log('Service Worker registered successfully:', registration.scope);
+
+      // Инициализируем систему обновлений
+      const { initServiceWorkerUpdate, checkPendingUpdate } = await import('./utils/serviceWorkerUpdate');
+      await initServiceWorkerUpdate();
+      checkPendingUpdate();
+
+      // Обработка обновления Service Worker
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // Новый SW установлен, но старый еще активен
+            console.log('New Service Worker installed, update available');
+            // Автоматически применяем обновление
+            if (window.confirm('Доступна новая версия приложения. Обновить сейчас?')) {
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
+              window.location.reload();
+            }
+          }
+        });
+      });
+
+      // Проверяем обновления каждые 60 секунд
+      setInterval(() => {
+        registration.update();
+      }, 60 * 1000);
+
+    } catch (error) {
+      console.log('Service Worker registration failed:', error);
+    }
   });
 }
