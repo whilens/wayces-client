@@ -8,10 +8,11 @@ RUN npm install
 
 COPY . .
 
-# Базовый URL API передаём аргументом сборки.
-# Для продакшена за Apache обычно достаточно относительного /api.
+# Базовый URL API и версия фронта (для автообновления SPA) — аргументами сборки.
 ARG REACT_APP_API_URL=/api
+ARG REACT_APP_FRONTEND_VERSION=
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
+ENV REACT_APP_FRONTEND_VERSION=$REACT_APP_FRONTEND_VERSION
 
 RUN npm run build
 

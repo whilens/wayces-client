@@ -24,6 +24,10 @@ api.interceptors.request.use(
       delete config.headers['Content-Type'];
     }
     
+    // Версия фронта (из билда) — для проверки на сервере и автообновления
+    const frontVersion = process.env.REACT_APP_FRONTEND_VERSION;
+    if (frontVersion) config.headers['X-Client-Version'] = frontVersion;
+
     // Для админских запросов используем accessToken
     if (config.url?.startsWith('/admin/') || config.url?.startsWith('/auth/')) {
       const accessToken = localStorage.getItem('accessToken');
@@ -61,6 +65,14 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+
+    // Устаревшая версия приложения — перезагружаем страницу
+    if (error.response?.status === 426) {
+      const newVersion = error.response?.headers?.['x-new-version'];
+      if (newVersion) localStorage.setItem('appVersion', newVersion);
+      setTimeout(() => window.location.reload(), 800);
+      return Promise.reject(error);
+    }
 
     // Исключаем запросы на логин и refresh из обработки 401
     const isAuthRequest = originalRequest?.url?.includes('/auth/login') || 
