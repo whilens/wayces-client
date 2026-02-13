@@ -25,7 +25,7 @@ const Home = () => {
     <div className="home">
       <section className="home__hero">
         <div className="home__hero-content">
-          <h1 className="home__hero-title">Добро пожаловать в Waycess</h1>
+          <h1 className="home__hero-title">Добро пожаловать в Счастье</h1>
           <p className="home__hero-subtitle">Лучшие товары по выгодным ценам</p>
           <Link to="/products" className="home__hero-button">
             Смотреть каталог
