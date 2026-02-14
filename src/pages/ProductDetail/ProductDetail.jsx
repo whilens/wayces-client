@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { notification } from 'antd';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchProductById, clearCurrentProduct } from '../../store/slices/productsSlice';
 import { addItem } from '../../store/slices/cartSlice';
@@ -191,6 +192,11 @@ const ProductDetail = () => {
     const cartItem = prepareCartItem();
     if (!cartItem) return;
     dispatch(addItem(cartItem));
+    notification.success({
+      message: 'Добавлено в корзину',
+      description: productFullName,
+      placement: 'topRight',
+    });
   };
 
   // Купить сейчас - добавляет в корзину и переходит на страницу оформления
@@ -198,6 +204,11 @@ const ProductDetail = () => {
     const cartItem = prepareCartItem();
     if (!cartItem) return;
     dispatch(addItem(cartItem));
+    notification.success({
+      message: 'Добавлено в корзину',
+      description: productFullName,
+      placement: 'topRight',
+    });
     navigate(ROUTES.CHECKOUT);
   };
 

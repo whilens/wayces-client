@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { notification } from 'antd';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { addItem, updateQuantity, removeItem } from '../../store/slices/cartSlice';
 import { addToFavorites, removeFromFavorites, checkFavorite } from '../../store/slices/favoritesSlice';
@@ -60,6 +61,11 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
       variants: variants || null,
       variantString: null, // Будет сформировано автоматически
     }));
+    notification.success({
+      message: 'Добавлено в корзину',
+      description: displayName,
+      placement: 'topRight',
+    });
   }, [dispatch, baseProductId, displayName, displayPrice, displayImage, variants]);
 
   const handleQuantityChange = useCallback((newQuantity, e) => {
@@ -106,8 +112,13 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
       await dispatch(removeFromFavorites(baseProductId));
     } else {
       await dispatch(addToFavorites(baseProductId));
+      notification.success({
+        message: 'Добавлено в избранное',
+        description: displayName,
+        placement: 'topRight',
+      });
     }
-  }, [isAuthenticated, isFavorite, baseProductId, dispatch]);
+  }, [isAuthenticated, isFavorite, baseProductId, dispatch, displayName]);
 
   const formattedPrice = useMemo(() => formatPrice(displayPrice), [displayPrice]);
   const formattedOriginalPrice = useMemo(() => formatPrice(priceInfo.originalPrice), [priceInfo.originalPrice]);
