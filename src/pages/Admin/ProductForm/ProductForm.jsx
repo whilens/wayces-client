@@ -188,6 +188,16 @@ const ProductForm = () => {
       
       // Сохраняем конфигурацию для использования при добавлении вариантов
       setCategoryConfig(config);
+
+      // При редактировании товара подставляем доступные значения вариантов из конфига (для чекбоксов)
+      if (preserveVariants && config?.variants?.length) {
+        setVariants((prev) =>
+          prev.map((v) => ({
+            ...v,
+            availableOptions: v.availableOptions ?? config.variants.find((cv) => cv.key === v.key)?.options ?? [],
+          }))
+        );
+      }
       
       // Заполняем характеристики из конфигурации (только если не редактируем)
       if (!preserveVariants) {
@@ -298,12 +308,10 @@ const ProductForm = () => {
   const handleSelectVariantFromConfig = (selectedVariantKey) => {
     if (!categoryConfig || !categoryConfig.variants) return;
     
-    // Находим выбранный вариант в конфигурации
-    const configVariant = categoryConfig.variants.find(v => v.key === selectedVariantKey);
+    const configVariant = categoryConfig.variants.find((v) => v.key === selectedVariantKey);
     if (!configVariant) return;
     
-    // Проверяем, не добавлен ли уже этот вариант
-    const alreadyAdded = variants.some(v => v.key === selectedVariantKey);
+    const alreadyAdded = variants.some((v) => v.key === selectedVariantKey);
     if (alreadyAdded) {
       notification.warning({
         message: 'Внимание',
@@ -313,7 +321,6 @@ const ProductForm = () => {
       return;
     }
     
-    // Создаем вариант с данными из конфигурации
     const newVariant = {
       key: configVariant.key,
       name: configVariant.name,
@@ -321,10 +328,37 @@ const ProductForm = () => {
       displayOrder: variants.length,
       isRequired: configVariant.isRequired !== false,
       options: [],
+      availableOptions: configVariant.options && Array.isArray(configVariant.options) ? configVariant.options : [],
     };
     
     setVariants([...variants, newVariant]);
     setShowVariantSelectModal(false);
+  };
+
+  // Переключение опции из списка доступных (чекбокс): добавить/убрать из variant.options
+  const toggleVariantOptionFromList = (variantIndex, optionFromConfig) => {
+    const newVariants = [...variants];
+    const variant = newVariants[variantIndex];
+    const exists = variant.options.some((o) => o.key === optionFromConfig.key);
+    if (exists) {
+      variant.options = variant.options.filter((o) => o.key !== optionFromConfig.key);
+    } else {
+      variant.options = [
+        ...(variant.options || []),
+        {
+          key: optionFromConfig.key,
+          value: optionFromConfig.value,
+          colorCode: optionFromConfig.colorCode || '',
+          priceModifier: 0,
+          images: [],
+          isDefault: variant.options.length === 0,
+          isAvailable: true,
+          stockQuantity: 0,
+          displayOrder: variant.options.length,
+        },
+      ];
+    }
+    setVariants(newVariants);
   };
 
   const removeVariant = (index) => {
@@ -518,9 +552,10 @@ const ProductForm = () => {
       });
       formDataToSend.append('specifications', JSON.stringify(specsObj));
 
-      // Обрабатываем варианты: извлекаем File объекты из изображений опций
+      // Обрабатываем варианты: извлекаем File объекты из изображений опций (availableOptions не отправляем)
       const processedVariants = variants.map((variant, vIndex) => {
-        const processedVariant = { ...variant };
+        const { availableOptions, ...variantRest } = variant;
+        const processedVariant = { ...variantRest };
         if (variant.options) {
           processedVariant.options = variant.options.map((option, oIndex) => {
             const processedOption = { ...option };
@@ -1017,15 +1052,60 @@ const ProductForm = () => {
                 </div>
 
                 <div className="admin-product-form__variant-options">
-                  <button
-                    type="button"
-                    className="admin-product-form__add-option-button"
-                    onClick={() => addVariantOption(vIndex)}
-                  >
-                    + Добавить опцию
-                  </button>
+                  {variant.availableOptions && variant.availableOptions.length > 0 ? (
+                    <>
+                      <p className="admin-product-form__hint" style={{ marginBottom: 8 }}>
+                        Выберите доступные значения для этого товара (из списка категории):
+                      </p>
+                      <div className="admin-product-form__option-checkboxes" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginBottom: 12 }}>
+                        {variant.availableOptions.map((opt) => {
+                          const isSelected = variant.options.some((o) => o.key === opt.key);
+                          return (
+                            <label
+                              key={opt.key}
+                              style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleVariantOptionFromList(vIndex, opt)}
+                              />
+                              {variant.type === 'color' && opt.colorCode && (
+                                <span
+                                  style={{
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: 4,
+                                    backgroundColor: opt.colorCode,
+                                    border: '1px solid #ccc',
+                                  }}
+                                  title={opt.value}
+                                />
+                              )}
+                              <span>{opt.value}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {variant.options.length > 0 && (
+                        <p className="admin-product-form__hint" style={{ marginBottom: 4 }}>
+                          Выбрано: {variant.options.length}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="admin-product-form__add-option-button"
+                      onClick={() => addVariantOption(vIndex)}
+                    >
+                      + Добавить опцию
+                    </button>
+                  )}
 
-                  {variant.options.map((option, oIndex) => (
+                  {/* Детальные карточки опций — только если вариант без списка из категории (ручной ввод) */}
+                  {(!variant.availableOptions || variant.availableOptions.length === 0) &&
+                    variant.options.map((option, oIndex) => (
                     <div key={oIndex} className="admin-product-form__option-group">
                       <div className="admin-product-form__option-header">
                         <h4>Опция {oIndex + 1}</h4>
@@ -1291,8 +1371,17 @@ const ProductForm = () => {
                         value={combination.sku || ''}
                         onChange={(e) => updateCombination(combIndex, 'sku', e.target.value)}
                         className="admin-product-form__input"
-                        placeholder="Необязательно"
+                        placeholder={
+                          formData.categoryId && categories.find((c) => c.id === Number(formData.categoryId))?.skuAutoGenerate
+                            ? 'Будет сгенерирован автоматически'
+                            : 'Необязательно'
+                        }
                       />
+                      {formData.categoryId && categories.find((c) => c.id === Number(formData.categoryId))?.skuAutoGenerate && (
+                        <p className="admin-product-form__hint" style={{ marginTop: 4, fontSize: '0.8rem', color: '#666' }}>
+                          Оставьте пустым — артикул подставится по коду категории и счётчику (6 цифр).
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
