@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminCategoriesAPI } from '../../../services/api';
 import { notification, Modal, Input, Select, Button } from 'antd';
@@ -278,6 +278,9 @@ const CategoryConfig = () => {
                       {variant.unit && (
                         <span className="admin-category-config__item-unit">unit: {variant.unit}</span>
                       )}
+                      {Array.isArray(variant.optionValues) && variant.optionValues.length > 0 && (
+                        <span className="admin-category-config__item-unit">Значений: {variant.optionValues.length}</span>
+                      )}
                     </div>
                   </div>
                   <div className="admin-category-config__item-actions">
@@ -471,10 +474,16 @@ const VariantModal = ({ open, onCancel, onSave, variant }) => {
     isRequired: true,
     displayOrder: 0,
     unit: '',
+    optionValues: [],
   });
 
+  const isColorVariant = (key, type) => key === 'color' || type === 'color';
+
   useEffect(() => {
+    if (!open) return;
     if (variant) {
+      const raw = variant.optionValues && Array.isArray(variant.optionValues) ? variant.optionValues : [];
+      const colorDefs = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa', '#795548', '#000000'];
       setFormData({
         key: variant.key || '',
         name: variant.name || '',
@@ -482,6 +491,14 @@ const VariantModal = ({ open, onCancel, onSave, variant }) => {
         isRequired: variant.isRequired !== false,
         displayOrder: variant.displayOrder || 0,
         unit: variant.unit || '',
+        optionValues:
+          raw.length
+            ? raw.map((o, i) => {
+                const needColor = isColorVariant(variant.key, variant.type);
+                const fallback = needColor ? colorDefs[i % colorDefs.length] : '';
+                return { value: o.value || '', colorCode: (o.colorCode || fallback).toString().toLowerCase() };
+              })
+            : [],
       });
     } else {
       setFormData({
@@ -491,9 +508,69 @@ const VariantModal = ({ open, onCancel, onSave, variant }) => {
         isRequired: true,
         displayOrder: 0,
         unit: '',
+        optionValues: [],
       });
     }
-  }, [variant, open]);
+  }, [open, variant?.id]);
+
+  // Палитра дефолтов для варианта «Цвет», чтобы новые значения не были все чёрными
+  const COLOR_DEFAULTS = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa', '#795548', '#000000'];
+
+  const addOptionValue = () => {
+    setFormData((prev) => {
+      const isColorVariant = prev.key === 'color' || prev.type === 'color';
+      const nextIndex = prev.optionValues.length;
+      const defaultColor = isColorVariant ? COLOR_DEFAULTS[nextIndex % COLOR_DEFAULTS.length] : '#000000';
+      return {
+        ...prev,
+        optionValues: [...prev.optionValues, { value: '', colorCode: defaultColor }],
+      };
+    });
+  };
+
+  const removeOptionValue = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      optionValues: prev.optionValues.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateOptionValue = (index, field, value) => {
+    const normalized = field === 'colorCode' && value ? String(value).toLowerCase() : value;
+    setFormData((prev) => {
+      const next = [...prev.optionValues];
+      next[index] = { ...next[index], [field]: normalized };
+      return { ...prev, optionValues: next };
+    });
+  };
+
+  // Неконтролируемый цвет: в state не пишем при каждом движении ползунка, только по debounce — убирает цикл обновлений
+  const pendingColorsRef = useRef({});
+  const colorDebounceRef = useRef(null);
+  const handleColorChange = (index, value) => {
+    const normalized = value ? String(value).toLowerCase() : value;
+    pendingColorsRef.current[index] = normalized;
+    if (colorDebounceRef.current) clearTimeout(colorDebounceRef.current);
+    colorDebounceRef.current = setTimeout(() => {
+      const pending = { ...pendingColorsRef.current };
+      pendingColorsRef.current = {};
+      colorDebounceRef.current = null;
+      if (Object.keys(pending).length === 0) return;
+      setFormData((prev) => {
+        const next = [...prev.optionValues];
+        Object.entries(pending).forEach(([i, v]) => {
+          if (v && next[Number(i)]) next[Number(i)] = { ...next[Number(i)], colorCode: v };
+        });
+        return { ...prev, optionValues: next };
+      });
+    }, 120);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (colorDebounceRef.current) clearTimeout(colorDebounceRef.current);
+    };
+  }, []);
 
   const handleSubmit = () => {
     if (!formData.key || !formData.name || !formData.type) {
@@ -504,6 +581,14 @@ const VariantModal = ({ open, onCancel, onSave, variant }) => {
       return;
     }
 
+    const isColor = isColorVariant(formData.key, formData.type);
+    const optionValues = formData.optionValues
+      .map((o) => ({
+        value: (o.value || '').trim(),
+        colorCode: isColor && (o.colorCode || '').trim() ? (o.colorCode || '').trim() : null,
+      }))
+      .filter((o) => o.value !== '');
+
     onSave({
       key: formData.key,
       name: formData.name,
@@ -511,6 +596,7 @@ const VariantModal = ({ open, onCancel, onSave, variant }) => {
       isRequired: formData.isRequired,
       displayOrder: parseInt(formData.displayOrder) || 0,
       unit: formData.unit || null,
+      optionValues,
     });
   };
 
@@ -554,6 +640,7 @@ const VariantModal = ({ open, onCancel, onSave, variant }) => {
           >
             <Option value="button">Кнопки</Option>
             <Option value="select">Выпадающий список</Option>
+            <Option value="color">Цвет</Option>
           </Select>
         </div>
 
@@ -586,6 +673,59 @@ const VariantModal = ({ open, onCancel, onSave, variant }) => {
             placeholder="EU, US, ГБ, МБ и т.д."
           />
           <small>Опционально. Будет отображаться после значения (например: "42 EU")</small>
+        </div>
+
+        <div className="admin-category-config__form-group">
+          <label>Доступные значения</label>
+          <p style={{ marginBottom: 8, fontSize: 12, color: '#666' }}>
+            Список значений для этого варианта. Ключи (size-38, color-black и т.д.) генерируются автоматически. При создании товара можно будет выбрать, какие из этих значений доступны.
+          </p>
+          <button
+            type="button"
+            onClick={addOptionValue}
+            className="admin-category-config__add-button"
+            style={{ marginBottom: 8 }}
+          >
+            + Добавить значение
+          </button>
+                  {formData.optionValues.length === 0 ? (
+                    <p className="admin-category-config__empty" style={{ marginTop: 4 }}>Значения не добавлены</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {formData.optionValues.map((opt, index) => {
+                        const showColorPicker = formData.key === 'color' || formData.type === 'color';
+                        return (
+                        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <Input
+                            value={opt.value}
+                            onChange={(e) => updateOptionValue(index, 'value', e.target.value)}
+                            placeholder={showColorPicker ? 'Черный, Красный...' : '38, 39, 40...'}
+                            style={{ flex: '1 1 120px', minWidth: 100 }}
+                          />
+                          {showColorPicker && (
+                            <>
+                              <input
+                                type="color"
+                                key={`color-${index}`}
+                                defaultValue={opt.colorCode || '#000000'}
+                                onChange={(e) => handleColorChange(index, e.target.value)}
+                                title="Цвет"
+                                style={{ width: 36, height: 32, padding: 0, border: '1px solid #d9d9d9', borderRadius: 4 }}
+                              />
+                              <span style={{ fontSize: 12, color: '#888' }}>{opt.colorCode || ''}</span>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeOptionValue(index)}
+                            style={{ padding: '4px 8px', fontSize: 12 }}
+                          >
+                            Удалить
+                          </button>
+                        </div>
+                      ); })}
+                    </div>
+                  )}
         </div>
       </div>
     </Modal>

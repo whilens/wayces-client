@@ -22,12 +22,14 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
     name,
     fullName, // Полное название с вариантами
     price,
+    priceMax, // Для displayAsProduct: макс. цена (от X – Y ₽)
     basePrice,
     image,
     defaultImage,
     description,
     variants, // Варианты комбинации
     combinationKey, // Ключ комбинации
+    displayAsProduct, // Одна карточка на товар — выбор варианта на странице товара
     discountType, // Тип скидки
     discountValue, // Значение скидки
   } = product;
@@ -39,6 +41,12 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
   const displayImage = getImageUrl(image || defaultImage);
   const displayName = fullName || name;
   const isFavorite = checkedItems[baseProductId] || false;
+  // Для «одна карточка на товар»: показываем «от X ₽» или «от X – Y ₽»
+  const isProductLevel = displayAsProduct === true;
+  const priceMaxDiscounted = priceMax != null ? calculateDiscountedPrice(priceMax, discountType, discountValue).discountedPrice : null;
+  const priceLabel = isProductLevel
+    ? (priceMax != null && priceMax !== price ? `от ${formatPrice(displayPrice)} – ${formatPrice(priceMaxDiscounted)}` : `от ${formatPrice(displayPrice)}`)
+    : null;
 
   // Проверяем, есть ли товар в корзине
   const cartItem = useMemo(() => {
@@ -84,14 +92,13 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
   }, [dispatch, cartItem]);
 
   const handleCardClick = useCallback(() => {
-    // Передаем базовый ID товара и комбинацию через query параметры
     const url = `/products/${baseProductId}`;
     const searchParams = new URLSearchParams();
-    if (combinationKey) {
+    if (!isProductLevel && combinationKey) {
       searchParams.set('combination', combinationKey);
     }
     navigate(`${url}${searchParams.toString() ? '?' + searchParams.toString() : ''}`);
-  }, [navigate, baseProductId, combinationKey]);
+  }, [navigate, baseProductId, combinationKey, isProductLevel]);
 
   // Проверяем избранное при монтировании
   React.useEffect(() => {
@@ -122,6 +129,7 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
 
   const formattedPrice = useMemo(() => formatPrice(displayPrice), [displayPrice]);
   const formattedOriginalPrice = useMemo(() => formatPrice(priceInfo.originalPrice), [priceInfo.originalPrice]);
+  const displayPriceText = isProductLevel ? priceLabel : formattedPrice;
   const discountBadge = useMemo(() => {
     if (!priceInfo.hasDiscount) return null;
     if (discountType === 'percentage') {
@@ -147,19 +155,19 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
         />
         <div className="product-card__info" onClick={handleCardClick}>
           <h3 className="product-card__title">{displayName}</h3>
-          {priceInfo.hasDiscount ? (
+          {priceInfo.hasDiscount && !isProductLevel ? (
             <div className="product-card__price-container">
               <span className="product-card__price-original">{formattedOriginalPrice}</span>
-              <span className="product-card__price-discounted">{formattedPrice}</span>
+              <span className="product-card__price-discounted">{displayPriceText}</span>
             </div>
           ) : (
-            <p className="product-card__price-text">{formattedPrice}</p>
+            <p className="product-card__price-text">{displayPriceText}</p>
           )}
           {description && (
             <p className="product-card__description">{description}</p>
           )}
         </div>
-        {cartItem ? (
+        {cartItem && !isProductLevel ? (
           <div className="product-card__quantity">
             <button
               className="product-card__quantity-button"
@@ -177,6 +185,14 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
               +
             </button>
           </div>
+        ) : isProductLevel ? (
+          <button
+            className="product-card__add-button"
+            onClick={(e) => { e.stopPropagation(); handleCardClick(); }}
+            aria-label="Выбрать вариант"
+          >
+            Выбрать вариант
+          </button>
         ) : (
           <button
             className="product-card__add-button"
@@ -216,10 +232,10 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
         <div className="product-card__overlay">
           <button 
             className="product-card__button"
-            onClick={handleAddToCart}
-            aria-label={`Добавить ${name} в корзину`}
+            onClick={(e) => { e.stopPropagation(); isProductLevel ? handleCardClick() : handleAddToCart(e); }}
+            aria-label={isProductLevel ? 'Выбрать вариант' : `Добавить ${name} в корзину`}
           >
-            Добавить в корзину
+            {isProductLevel ? 'Выбрать вариант' : 'Добавить в корзину'}
           </button>
         </div>
       </div>
@@ -230,13 +246,13 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
           <p className="product-card__description">{description}</p>
         )}
         <div className="product-card__footer">
-          {priceInfo.hasDiscount ? (
+          {priceInfo.hasDiscount && !isProductLevel ? (
             <div className="product-card__price-container">
               <span className="product-card__price-original">{formattedOriginalPrice}</span>
-              <span className="product-card__price-discounted">{formattedPrice}</span>
+              <span className="product-card__price-discounted">{displayPriceText}</span>
             </div>
           ) : (
-            <span className="product-card__price">{formattedPrice}</span>
+            <span className="product-card__price">{displayPriceText}</span>
           )}
         </div>
       </div>
@@ -246,15 +262,17 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
   // Оптимизированная функция сравнения для React.memo
   const prev = prevProps.product;
   const next = nextProps.product;
-  
+
   return (
     prev.id === next.id &&
     prev.productId === next.productId &&
     prev.price === next.price &&
+    prev.priceMax === next.priceMax &&
     prev.basePrice === next.basePrice &&
     prev.fullName === next.fullName &&
     prev.name === next.name &&
     prev.combinationKey === next.combinationKey &&
+    prev.displayAsProduct === next.displayAsProduct &&
     prev.image === next.image &&
     prev.defaultImage === next.defaultImage &&
     prevProps.viewMode === nextProps.viewMode &&

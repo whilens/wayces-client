@@ -83,13 +83,14 @@ const AdminCategories = () => {
   const handleSaveCategory = async (values) => {
     try {
       if (editingCategory) {
-        // TODO: Добавить API для обновления категории
-        notification.warning({
-          message: 'Функция редактирования',
-          description: 'API для редактирования категорий пока не реализовано',
+        await adminCategoriesAPI.update(editingCategory.id, values);
+        notification.success({
+          message: 'Категория обновлена',
           placement: 'topRight',
         });
         setIsEditModalOpen(false);
+        setEditingCategory(null);
+        fetchCategories();
       } else {
         await adminCategoriesAPI.create(values);
         notification.success({
@@ -252,6 +253,9 @@ const CategoryModal = ({ open, onCancel, onSave, category, categories }) => {
     description: '',
     imageUrl: '',
     displayOrder: 0,
+    skuCode: '',
+    skuAutoGenerate: false,
+    listCombinationsSeparately: false,
   });
 
   useEffect(() => {
@@ -262,7 +266,10 @@ const CategoryModal = ({ open, onCancel, onSave, category, categories }) => {
         parentId: category.parentId || null,
         description: category.description || '',
         imageUrl: category.imageUrl || '',
-        displayOrder: category.displayOrder || 0,
+        displayOrder: category.displayOrder ?? 0,
+        skuCode: category.skuCode != null ? String(category.skuCode) : '',
+        skuAutoGenerate: category.skuAutoGenerate === true,
+        listCombinationsSeparately: category.listCombinationsSeparately === true,
       });
     } else {
       setFormData({
@@ -272,6 +279,9 @@ const CategoryModal = ({ open, onCancel, onSave, category, categories }) => {
         description: '',
         imageUrl: '',
         displayOrder: 0,
+        skuCode: '',
+        skuAutoGenerate: false,
+        listCombinationsSeparately: false,
       });
     }
   }, [category, open]);
@@ -280,6 +290,15 @@ const CategoryModal = ({ open, onCancel, onSave, category, categories }) => {
     if (!formData.name || !formData.slug) {
       notification.warning({
         message: 'Заполните все обязательные поля',
+        placement: 'topRight',
+      });
+      return;
+    }
+
+    const skuCodeNum = formData.skuCode === '' ? null : parseInt(formData.skuCode, 10);
+    if (formData.skuCode !== '' && (isNaN(skuCodeNum) || skuCodeNum < 1 || skuCodeNum > 99)) {
+      notification.warning({
+        message: 'Код SKU должен быть числом от 1 до 99',
         placement: 'topRight',
       });
       return;
@@ -297,6 +316,9 @@ const CategoryModal = ({ open, onCancel, onSave, category, categories }) => {
       description: formData.description || null,
       imageUrl: formData.imageUrl || null,
       displayOrder: parseInt(formData.displayOrder) || 0,
+      skuCode: formData.skuCode === '' ? null : skuCodeNum,
+      skuAutoGenerate: formData.skuAutoGenerate,
+      listCombinationsSeparately: formData.listCombinationsSeparately,
     });
   };
 
@@ -383,6 +405,43 @@ const CategoryModal = ({ open, onCancel, onSave, category, categories }) => {
             onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) || 0 })}
             min={0}
           />
+        </div>
+
+        <div className="admin-categories__form-group">
+          <label>Код SKU (1–99)</label>
+          <Input
+            type="number"
+            value={formData.skuCode}
+            onChange={(e) => setFormData({ ...formData, skuCode: e.target.value })}
+            placeholder="Пусто — без автогенерации"
+            min={1}
+            max={99}
+          />
+          <small>Цифровой код категории для артикулов. Используется вместе с счётчиком: SKU = 6 цифр (код + номер).</small>
+        </div>
+
+        <div className="admin-categories__form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={formData.skuAutoGenerate}
+              onChange={(e) => setFormData({ ...formData, skuAutoGenerate: e.target.checked })}
+            />
+            Автогенерация SKU для комплектаций
+          </label>
+          <small>Если включено и указан код SKU, при создании комплектаций товаров этой категории артикул будет подставляться автоматически.</small>
+        </div>
+
+        <div className="admin-categories__form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={formData.listCombinationsSeparately}
+              onChange={(e) => setFormData({ ...formData, listCombinationsSeparately: e.target.checked })}
+            />
+            В каталоге показывать каждую комплектацию отдельно
+          </label>
+          <small>Если выключено, в списке товаров будет одна карточка на товар (варианты выбираются на странице товара). Если включено — отдельная карточка на каждую комплектацию (размер/цвет и т.д.).</small>
         </div>
       </div>
     </Modal>

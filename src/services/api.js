@@ -194,7 +194,9 @@ export const adminProductsAPI = {
 // API методы для админки - категории
 export const adminCategoriesAPI = {
   getAll: () => api.get('/admin/categories'),
+  getById: (id) => api.get(`/admin/categories/${id}`),
   create: (data) => api.post('/admin/categories', data),
+  update: (id, data) => api.put(`/admin/categories/${id}`, data),
   getConfig: (categoryId) => api.get(`/admin/category-config/${categoryId}`),
   getFullConfig: (categoryId) => api.get(`/admin/category-config/${categoryId}/full`),
   // Характеристики
