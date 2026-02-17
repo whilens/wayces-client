@@ -26,27 +26,58 @@ export const useProductVariants = (product, combinationFromUrl) => {
     return map;
   }, [product]);
 
-  // Инициализация выбранных вариантов
+  // Карта комбинаций: ключ -> { combination, stockQuantity } для проверки остатка
+  const combinationsMap = useMemo(() => {
+    const map = new Map();
+    if (!product?.combinations?.length) return map;
+    product.combinations.forEach((comb) => {
+      if (comb.isActive === false) return;
+      const combKey = Object.keys(comb.variants || {})
+        .sort()
+        .map((k) => `${k}-${comb.variants[k]}`)
+        .join('_');
+      map.set(combKey, { combination: comb, stockQuantity: comb.stockQuantity ?? 0 });
+    });
+    return map;
+  }, [product]);
+
+  // Инициализация выбранных вариантов: только существующая и с остатком > 0
   useEffect(() => {
     if (product?.variants) {
-      // Парсим комбинацию из URL
       const parsedVariants = combinationFromUrl
         ? parseCombinationFromUrl(combinationFromUrl, product.variants)
         : {};
-      
-      // Если не все варианты восстановлены из URL, используем значения по умолчанию
       const initialVariants = {};
       Object.keys(product.variants).forEach((key) => {
         initialVariants[key] = parsedVariants[key] || product.variants[key].default;
       });
-      
-      setSelectedVariants(initialVariants);
+
+      const keyFromVariants = (v) =>
+        Object.keys(v)
+          .sort()
+          .map((k) => `${k}-${v[k]}`)
+          .join('_');
+      const initialKey = keyFromVariants(initialVariants);
+      const entry = combinationsMap.get(initialKey);
+      const inStock = entry && entry.stockQuantity > 0;
+
+      if (inStock) {
+        setSelectedVariants(initialVariants);
+      } else {
+        // Подставляем первую комплектацию с остатком > 0
+        const firstInStock = product.combinations.find((c) => c.isActive !== false && (c.stockQuantity ?? 0) > 0);
+        if (firstInStock?.variants && Object.keys(firstInStock.variants).length > 0) {
+          setSelectedVariants({ ...firstInStock.variants });
+        } else {
+          setSelectedVariants(initialVariants);
+        }
+      }
       setSelectedImageIndex(0);
     } else {
       setSelectedVariants({});
       setSelectedImageIndex(0);
     }
-  }, [product, combinationFromUrl]);
+  }, [product, combinationFromUrl, combinationsMap]);
 
   // Получение текущих изображений на основе выбранных вариантов
   const currentImages = useMemo(() => {
@@ -107,68 +138,41 @@ export const useProductVariants = (product, combinationFromUrl) => {
     return product.name;
   }, [product, selectedVariants]);
 
-  // Проверка доступности комбинации
+  // Проверка доступности комбинации: существует и остаток > 0
   const isCombinationAvailable = useMemo(() => {
-    if (!product?.combinations || !product.combinations.length) {
-      // Если нет комплектаций, все комбинации доступны
-      return () => true;
-    }
-
-    // Создаем Set доступных комбинаций для быстрой проверки
-    const availableCombinations = new Set();
-    product.combinations.forEach((comb) => {
-      if (comb.isActive !== false) {
-        // Формируем ключ комбинации из вариантов
-        const combKey = Object.keys(comb.variants || {})
-          .sort()
-          .map((key) => `${key}-${comb.variants[key]}`)
-          .join('_');
-        availableCombinations.add(combKey);
-      }
-    });
-
-    // Функция проверки доступности комбинации
+    if (!product?.combinations?.length) return () => true;
     return (variants) => {
-      if (!variants || Object.keys(variants).length === 0) {
-        return true; // Если ничего не выбрано, считаем доступным
-      }
-
-      // Формируем ключ для проверки
+      if (!variants || Object.keys(variants).length === 0) return true;
       const checkKey = Object.keys(variants)
         .sort()
         .map((key) => `${key}-${variants[key]}`)
         .join('_');
-
-      return availableCombinations.has(checkKey);
+      const entry = combinationsMap.get(checkKey);
+      return entry && entry.stockQuantity > 0;
     };
-  }, [product]);
+  }, [product, combinationsMap]);
 
-  // Проверка доступности опции варианта с учетом текущих выбранных вариантов
+  // Текущая комплектация по выбранным вариантам (для цены, остатка, блокировки кнопок)
+  const currentCombination = useMemo(() => {
+    if (!selectedVariants || Object.keys(selectedVariants).length === 0) return null;
+    const key = Object.keys(selectedVariants)
+      .sort()
+      .map((k) => `${k}-${selectedVariants[k]}`)
+      .join('_');
+    const entry = combinationsMap.get(key);
+    return entry ? entry.combination : null;
+  }, [selectedVariants, combinationsMap]);
+
+  // Проверка доступности опции: есть хотя бы одна комбинация с этой опцией (остаток не учитываем — опция может быть выбрана, но «нет в наличии»)
   const isOptionAvailable = useMemo(() => {
-    if (!product?.combinations || !product.combinations.length) {
-      // Если нет комплектаций, все опции доступны
-      return () => () => true;
-    }
-
+    if (!product?.combinations?.length) return () => () => true;
     return (variantKey, optionId) => {
-      // Создаем тестовую комбинацию с выбранной опцией
-      const testVariants = {
-        ...selectedVariants,
-        [variantKey]: optionId,
-      };
-
-      // Проверяем, есть ли хотя бы одна доступная комбинация с этой опцией
+      const testVariants = { ...selectedVariants, [variantKey]: optionId };
       return product.combinations.some((comb) => {
         if (comb.isActive === false) return false;
-
         const combVariants = comb.variants || {};
-        const combKeys = Object.keys(combVariants);
-
-        // Проверяем, что все выбранные варианты совпадают с комбинацией
-        return combKeys.every((key) => {
-          if (key === variantKey) {
-            return combVariants[key] === optionId;
-          }
+        return Object.keys(combVariants).every((key) => {
+          if (key === variantKey) return combVariants[key] === optionId;
           return testVariants[key] === undefined || combVariants[key] === testVariants[key];
         });
       });
@@ -201,9 +205,10 @@ export const useProductVariants = (product, combinationFromUrl) => {
     finalPrice,
     productFullName,
     handleVariantChange,
-    variantOptionsMap, // Экспортируем для использования в компоненте
-    isCombinationAvailable, // Функция проверки доступности комбинации
-    isOptionAvailable, // Функция проверки доступности опции
+    variantOptionsMap,
+    isCombinationAvailable,
+    isOptionAvailable,
+    currentCombination, // { id, combinationKey, price, stockQuantity, variants } или null
   };
 };
 
