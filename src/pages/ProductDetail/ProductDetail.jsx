@@ -33,7 +33,12 @@ const ProductDetail = () => {
     productFullName,
     handleVariantChange,
     isOptionAvailable,
+    isCombinationAvailable,
+    currentCombination,
   } = useProductVariants(currentProduct, combinationFromUrl);
+
+  // Можно добавить в корзину: нет вариантов — всегда; есть варианты — только существующая комплектация с остатком > 0
+  const canAddToCart = !currentProduct?.combinations?.length || (currentCombination && (currentCombination.stockQuantity ?? 0) > 0);
 
   // Состояние модального окна для просмотра изображений
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -169,26 +174,29 @@ const ProductDetail = () => {
       ? generateVariantString(selectedVariants, currentProduct.variants)
       : '';
 
-    // Рассчитываем цену со скидкой
-    const priceInfo = calculateDiscountedPrice(
-      finalPrice,
-      currentProduct.discountType,
-      currentProduct.discountValue
-    );
-    
+    const priceToUse = currentCombination?.price != null ? parseFloat(currentCombination.price) : finalPrice;
+    const priceInfoCart = calculateDiscountedPrice(priceToUse, currentProduct.discountType, currentProduct.discountValue);
     return {
       id: currentProduct.id,
       name: productFullName,
-      price: priceInfo.discountedPrice, // Используем цену со скидкой
+      price: priceInfoCart.discountedPrice,
       image: currentImages[0],
       quantity: 1,
       variants: selectedVariants,
       variantString,
     };
-  }, [currentProduct, productFullName, finalPrice, currentImages, selectedVariants]);
+  }, [currentProduct, productFullName, finalPrice, currentImages, selectedVariants, currentCombination]);
 
   // Добавление в корзину
   const handleAddToCart = () => {
+    if (!canAddToCart) {
+      notification.warning({
+        message: 'Нет в наличии',
+        description: 'Эта комплектация временно недоступна. Выберите другую или зайдите позже.',
+        placement: 'topRight',
+      });
+      return;
+    }
     const cartItem = prepareCartItem();
     if (!cartItem) return;
     dispatch(addItem(cartItem));
@@ -201,6 +209,14 @@ const ProductDetail = () => {
 
   // Купить сейчас - добавляет в корзину и переходит на страницу оформления
   const handleBuyNow = () => {
+    if (!canAddToCart) {
+      notification.warning({
+        message: 'Нет в наличии',
+        description: 'Эта комплектация временно недоступна. Выберите другую или зайдите позже.',
+        placement: 'topRight',
+      });
+      return;
+    }
     const cartItem = prepareCartItem();
     if (!cartItem) return;
     dispatch(addItem(cartItem));
@@ -211,6 +227,24 @@ const ProductDetail = () => {
     });
     navigate(ROUTES.CHECKOUT);
   };
+
+  // Копирование артикула (SKU) в буфер обмена
+  const displaySku = currentCombination?.sku || currentProduct?.sku || null;
+  const handleCopySku = useCallback(() => {
+    if (!displaySku) return;
+    navigator.clipboard.writeText(displaySku).then(() => {
+      notification.success({
+        message: 'Артикул скопирован',
+        description: displaySku,
+        placement: 'topRight',
+      });
+    }).catch(() => {
+      notification.error({
+        message: 'Не удалось скопировать',
+        placement: 'topRight',
+      });
+    });
+  }, [displaySku]);
 
   // Открытие модального окна с изображением
   const handleImageClick = () => {
@@ -317,7 +351,15 @@ const ProductDetail = () => {
           {/* Информация и комплектации справа */}
           <div className="product-detail__info">
             <h1 className="product-detail__title">{productFullName}</h1>
-            
+
+            {displaySku && (
+              <div className="product-detail__sku" onClick={handleCopySku} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleCopySku()} title="Нажмите, чтобы скопировать артикул">
+                <span className="product-detail__sku-label">Артикул:</span>
+                <span className="product-detail__sku-value">{displaySku}</span>
+                <span className="product-detail__sku-copy" aria-hidden>📋</span>
+              </div>
+            )}
+
             {reviewsStats.totalReviews > 0 ? (
               <div className="product-detail__rating">
                 <span className="product-detail__stars">
@@ -437,14 +479,17 @@ const ProductDetail = () => {
             )}
 
             <div className="product-detail__actions">
+              {currentProduct.combinations?.length > 0 && !canAddToCart && (
+                <p className="product-detail__out-of-stock">Нет в наличии</p>
+              )}
               <button
-                className="product-detail__add-to-cart"
+                className={`product-detail__add-to-cart ${!canAddToCart ? 'product-detail__add-to-cart--disabled' : ''}`}
                 onClick={handleAddToCart}
               >
                 Добавить в корзину
               </button>
-              <button 
-                className="product-detail__buy-now"
+              <button
+                className={`product-detail__buy-now ${!canAddToCart ? 'product-detail__buy-now--disabled' : ''}`}
                 onClick={handleBuyNow}
               >
                 Купить сейчас
