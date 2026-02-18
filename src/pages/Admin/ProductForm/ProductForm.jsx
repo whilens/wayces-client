@@ -4,7 +4,7 @@ import { adminProductsAPI, adminCategoriesAPI } from '../../../services/api';
 import { ROUTES } from '../../../utils/constants';
 import { formatPrice } from '../../../utils/helpers';
 import { getImageUrl } from '../../../utils/imageUtils';
-import { notification, Modal } from 'antd';
+import { notification } from 'antd';
 import './ProductForm.css';
 
 const ProductForm = () => {
@@ -13,6 +13,7 @@ const ProductForm = () => {
   const isEditMode = !!id;
   const fileInputRef = useRef(null);
   const optionFileInputRefs = useRef({});
+  const hasUnsavedChangesRef = useRef(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -36,7 +37,11 @@ const ProductForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(isEditMode);
   const [categoryConfig, setCategoryConfig] = useState(null); // Конфигурация категории
-  const [showVariantSelectModal, setShowVariantSelectModal] = useState(false); // Модальное окно выбора варианта
+  const [currentStep, setCurrentStep] = useState(1); // Визард: 1 — основное, 2 — варианты, 3 — комплектации
+  const [manualVariantName, setManualVariantName] = useState('');
+  const [manualVariantValues, setManualVariantValues] = useState('');
+  const [bulkPrice, setBulkPrice] = useState('');
+  const [bulkStock, setBulkStock] = useState('');
 
   useEffect(() => {
     fetchCategories();
@@ -44,6 +49,46 @@ const ProductForm = () => {
       fetchProduct();
     }
   }, [id]);
+
+  // Шаг 2: загрузка конфига категории при входе, если ещё не загружен
+  useEffect(() => {
+    if (currentStep === 2 && formData.categoryId && !categoryConfig) {
+      loadCategoryConfig(formData.categoryId, isEditMode);
+    }
+  }, [currentStep, formData.categoryId]);
+
+  // Предупреждение при уходе со страницы с несохранёнными данными (закрытие вкладки, обновление)
+  useEffect(() => {
+    const onBeforeUnload = (e) => {
+      if (hasUnsavedChangesRef.current) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []);
+
+  // Шаг 2: подтянуть все варианты из конфига (добавить отсутствующие в state)
+  useEffect(() => {
+    if (currentStep !== 2 || !categoryConfig?.variants?.length) return;
+    setVariants((prev) => {
+      const next = [...prev];
+      for (const cv of categoryConfig.variants) {
+        if (next.some((v) => v.key === cv.key)) continue;
+        next.push({
+          key: cv.key,
+          name: cv.name,
+          type: cv.type || 'button',
+          displayOrder: next.length,
+          isRequired: true,
+          options: [],
+          availableOptions: cv.options || [],
+        });
+      }
+      return next;
+    });
+  }, [currentStep, categoryConfig?.variants]);
 
   const fetchCategories = async () => {
     try {
@@ -157,6 +202,7 @@ const ProductForm = () => {
   };
 
   const handleChange = (e) => {
+    hasUnsavedChangesRef.current = true;
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -226,20 +272,24 @@ const ProductForm = () => {
   };
 
   const handleSpecificationChange = (index, field, value) => {
+    hasUnsavedChangesRef.current = true;
     const newSpecs = [...specifications];
     newSpecs[index][field] = value;
     setSpecifications(newSpecs);
   };
 
   const addSpecification = () => {
+    hasUnsavedChangesRef.current = true;
     setSpecifications([...specifications, { key: '', value: '' }]);
   };
 
   const removeSpecification = (index) => {
+    hasUnsavedChangesRef.current = true;
     setSpecifications(specifications.filter((_, i) => i !== index));
   };
 
   const handleImageUpload = (e) => {
+    hasUnsavedChangesRef.current = true;
     const files = Array.from(e.target.files);
     const newImages = files.map((file) => ({
       file,
@@ -249,6 +299,7 @@ const ProductForm = () => {
   };
 
   const removeImage = (index) => {
+    hasUnsavedChangesRef.current = true;
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
     // Если удаляемое изображение было defaultImage, сбрасываем выбор
@@ -258,6 +309,7 @@ const ProductForm = () => {
   };
 
   const removeExistingImage = (imageId) => {
+    hasUnsavedChangesRef.current = true;
     // Добавляем ID в список удаленных
     setDeletedImageIds([...deletedImageIds, imageId]);
     // Удаляем из списка существующих
@@ -277,66 +329,9 @@ const ProductForm = () => {
     setSelectedDefaultImage(-(index + 1));
   };
 
-  const addVariant = () => {
-    // Если есть конфигурация категории с вариантами, показываем модальное окно
-    if (categoryConfig && categoryConfig.variants && categoryConfig.variants.length > 0) {
-      // Фильтруем варианты, которые ещё не добавлены
-      const availableVariants = categoryConfig.variants.filter(
-        configVariant => !variants.some(v => v.key === configVariant.key)
-      );
-      
-      if (availableVariants.length > 0) {
-        setShowVariantSelectModal(true);
-      } else {
-        // Все варианты уже добавлены
-        notification.info({
-          message: 'Информация',
-          description: 'Все доступные варианты из конфигурации категории уже добавлены',
-          placement: 'topRight',
-        });
-      }
-    } else {
-      // Если конфигурации нет, показываем сообщение
-      notification.warning({
-        message: 'Внимание',
-        description: 'Для выбранной категории нет предопределенных вариантов. Выберите категорию с конфигурацией.',
-        placement: 'topRight',
-      });
-    }
-  };
-
-  const handleSelectVariantFromConfig = (selectedVariantKey) => {
-    if (!categoryConfig || !categoryConfig.variants) return;
-    
-    const configVariant = categoryConfig.variants.find((v) => v.key === selectedVariantKey);
-    if (!configVariant) return;
-    
-    const alreadyAdded = variants.some((v) => v.key === selectedVariantKey);
-    if (alreadyAdded) {
-      notification.warning({
-        message: 'Внимание',
-        description: 'Этот вариант уже добавлен к товару',
-        placement: 'topRight',
-      });
-      return;
-    }
-    
-    const newVariant = {
-      key: configVariant.key,
-      name: configVariant.name,
-      type: configVariant.type || 'button',
-      displayOrder: variants.length,
-      isRequired: configVariant.isRequired !== false,
-      options: [],
-      availableOptions: configVariant.options && Array.isArray(configVariant.options) ? configVariant.options : [],
-    };
-    
-    setVariants([...variants, newVariant]);
-    setShowVariantSelectModal(false);
-  };
-
   // Переключение опции из списка доступных (чекбокс): добавить/убрать из variant.options
   const toggleVariantOptionFromList = (variantIndex, optionFromConfig) => {
+    hasUnsavedChangesRef.current = true;
     const newVariants = [...variants];
     const variant = newVariants[variantIndex];
     const exists = variant.options.some((o) => o.key === optionFromConfig.key);
@@ -362,7 +357,148 @@ const ProductForm = () => {
   };
 
   const removeVariant = (index) => {
+    hasUnsavedChangesRef.current = true;
     setVariants(variants.filter((_, i) => i !== index));
+  };
+
+  // Slug для ключей при ручном добавлении варианта
+  const toSlug = (s) =>
+    String(s)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '') || 'option';
+
+  // Добавить вариант вручную (когда в конфиге категории нет вариантов)
+  const addManualVariant = (variantName, valuesStr) => {
+    const name = variantName.trim();
+    if (!name) return;
+    hasUnsavedChangesRef.current = true;
+    const values = valuesStr
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (values.length === 0) return;
+    const variantKey = toSlug(name);
+    const options = values.map((val, i) => ({
+      key: toSlug(val) || `${variantKey}-${i}`,
+      value: val,
+      colorCode: '',
+      priceModifier: 0,
+      images: [],
+      isDefault: i === 0,
+      isAvailable: true,
+      stockQuantity: 0,
+      displayOrder: i,
+    }));
+    setVariants((prev) => [
+      ...prev,
+      {
+        key: variantKey,
+        name,
+        type: 'button',
+        displayOrder: prev.length,
+        isRequired: true,
+        options,
+        availableOptions: [],
+      },
+    ]);
+  };
+
+  // Количество комбинаций (декартово произведение размеров опций)
+  const combinationsCount =
+    variants.length === 0
+      ? 0
+      : variants.reduce((n, v) => n * Math.max(1, (v.options?.length || 0)), 1);
+
+  const validateStep2 = () => {
+    if (variants.length === 0) return false;
+    const hasOptions = variants.every((v) => (v.options?.length || 0) > 0);
+    return hasOptions;
+  };
+
+  const validateStep3 = () => {
+    if (variants.length > 0 && combinations.length === 0) return false;
+    const invalid = combinations.some(
+      (c) => (c.price ?? 0) < 0 || (c.stockQuantity ?? 0) < 0
+    );
+    return !invalid;
+  };
+
+  // Ключ комбинации (как на бэкенде) для слияния при редактировании
+  const getCombinationKey = (variantsObj) =>
+    Object.keys(variantsObj || {})
+      .sort()
+      .map((k) => `${k}-${variantsObj[k]}`)
+      .join('_');
+
+  // Декартово произведение вариантов → массив { variants, price, stockQuantity, sku }
+  const buildCombinationsTable = (variantList, basePriceNum) => {
+    const list = variantList.filter((v) => (v.options?.length || 0) > 0);
+    if (list.length === 0) return [];
+    const basePrice = parseFloat(basePriceNum) || 0;
+    const build = (index, current) => {
+      if (index === list.length) return [{ ...current }];
+      const v = list[index];
+      const result = [];
+      for (const opt of v.options) {
+        result.push(...build(index + 1, { ...current, [v.key]: opt.key }));
+      }
+      return result;
+    };
+    const raw = build(0, {});
+    return raw.map((variantsObj) => {
+      let price = basePrice;
+      for (const [vKey, oKey] of Object.entries(variantsObj)) {
+        const v = list.find((x) => x.key === vKey);
+        const opt = v?.options?.find((o) => o.key === oKey);
+        if (opt) price += parseFloat(opt.priceModifier || 0);
+      }
+      return { variants: variantsObj, price, stockQuantity: 0, sku: '' };
+    });
+  };
+
+  // На шаге 3: собрать таблицу из вариантов и слить с существующими комплектациями
+  useEffect(() => {
+    if (currentStep !== 3 || variants.length === 0) return;
+    const built = buildCombinationsTable(variants, formData.basePrice);
+    const keyToExisting = new Map();
+    combinations.forEach((c) => {
+      const key = getCombinationKey(c.variants);
+      if (key) keyToExisting.set(key, c);
+    });
+    const merged = built.map((row) => {
+      const key = getCombinationKey(row.variants);
+      const existing = keyToExisting.get(key);
+      if (existing) {
+        return {
+          variants: row.variants,
+          price: existing.price ?? row.price,
+          stockQuantity: existing.stockQuantity ?? row.stockQuantity,
+          sku: existing.sku ?? row.sku,
+        };
+      }
+      return row;
+    });
+    setCombinations(merged);
+  }, [currentStep, variants]);
+
+  const applyBulkPrice = (value) => {
+    const num = parseFloat(value);
+    if (Number.isNaN(num) || num < 0) return;
+    hasUnsavedChangesRef.current = true;
+    setCombinations((prev) =>
+      prev.map((c) => ({ ...c, price: num }))
+    );
+  };
+
+  const applyBulkStock = (value) => {
+    const num = parseInt(value, 10);
+    if (Number.isNaN(num) || num < 0) return;
+    hasUnsavedChangesRef.current = true;
+    setCombinations((prev) =>
+      prev.map((c) => ({ ...c, stockQuantity: num }))
+    );
   };
 
   const updateVariant = (index, field, value) => {
@@ -424,40 +560,94 @@ const ProductForm = () => {
     setVariants(newVariants);
   };
 
-  // Управление комплектациями
-  const addCombination = () => {
-    // Создаем новую пустую комплектацию
-    const newCombination = {
-      id: Date.now(), // Временный ID
-      variants: {}, // Выбранные варианты для этой комплектации
-      price: parseFloat(formData.basePrice) || 0,
-      stockQuantity: 0,
-      sku: '',
-    };
-    setCombinations([...combinations, newCombination]);
-  };
-
-  const removeCombination = (index) => {
-    setCombinations(combinations.filter((_, i) => i !== index));
-  };
-
   const updateCombination = (index, field, value) => {
+    hasUnsavedChangesRef.current = true;
     const newCombinations = [...combinations];
     newCombinations[index][field] = value;
     setCombinations(newCombinations);
   };
 
-  const updateCombinationVariant = (combIndex, variantKey, optionKey) => {
-    const newCombinations = [...combinations];
-    if (!newCombinations[combIndex].variants) {
-      newCombinations[combIndex].variants = {};
+  const validateStep1 = () => {
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = 'Название обязательно';
+    if (!formData.basePrice || parseFloat(formData.basePrice) <= 0) newErrors.basePrice = 'Цена должна быть больше 0';
+    if (!formData.description.trim()) newErrors.description = 'Описание обязательно';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSaveAsSimple = async () => {
+    if (!validateStep1()) {
+      notification.error({
+        message: 'Ошибка валидации',
+        description: 'Заполните название, цену и описание',
+        placement: 'topRight',
+      });
+      return;
     }
-    if (optionKey) {
-      newCombinations[combIndex].variants[variantKey] = optionKey;
-    } else {
-      delete newCombinations[combIndex].variants[variantKey];
+    setIsLoading(true);
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('basePrice', formData.basePrice);
+      if (formData.categoryId) formDataToSend.append('categoryId', formData.categoryId);
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('isActive', formData.isActive);
+      if (formData.discountType) {
+        formDataToSend.append('discountType', formData.discountType);
+        formDataToSend.append('discountValue', formData.discountValue || '0');
+      } else {
+        formDataToSend.append('discountType', '');
+        formDataToSend.append('discountValue', '0');
+      }
+      const specsObj = {};
+      specifications.forEach((spec) => {
+        if (spec.key && spec.value) specsObj[spec.key] = spec.value;
+      });
+      formDataToSend.append('specifications', JSON.stringify(specsObj));
+      formDataToSend.append('variants', JSON.stringify([]));
+      formDataToSend.append('combinations', JSON.stringify([]));
+      images.forEach((img) => formDataToSend.append('images', img.file));
+      if (deletedImageIds.length > 0) formDataToSend.append('removeImages', JSON.stringify(deletedImageIds));
+      if (selectedDefaultImage !== null) {
+        if (selectedDefaultImage < 0) {
+          const newImageIndex = Math.abs(selectedDefaultImage) - 1;
+          if (images[newImageIndex]) {
+            formDataToSend.append('defaultImageFromNew', 'true');
+            formDataToSend.append('defaultImageNewIndex', newImageIndex.toString());
+          }
+        } else {
+          const existingImg = existingImages.find((img) => img.id === selectedDefaultImage);
+          if (existingImg) formDataToSend.append('defaultImage', existingImg.imageUrl);
+        }
+      } else if (images.length > 0) {
+        formDataToSend.append('defaultImageFromNew', 'true');
+        formDataToSend.append('defaultImageNewIndex', '0');
+      } else if (existingImages.length > 0 && isEditMode) {
+        formDataToSend.append('defaultImage', existingImages[0].imageUrl);
+      }
+      if (isEditMode) {
+        await adminProductsAPI.update(id, formDataToSend);
+      } else {
+        await adminProductsAPI.create(formDataToSend);
+      }
+      notification.success({
+        message: isEditMode ? 'Товар обновлен' : 'Товар создан',
+        description: `Товар "${formData.name}" сохранён как простой (без вариантов)`,
+        placement: 'topRight',
+      });
+      hasUnsavedChangesRef.current = false;
+      navigate(ROUTES.ADMIN_PRODUCTS);
+    } catch (error) {
+      console.error('Ошибка сохранения товара:', error);
+      notification.error({
+        message: 'Ошибка',
+        description: error.response?.data?.error || 'Не удалось сохранить товар',
+        placement: 'topRight',
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setCombinations(newCombinations);
   };
 
   const validateForm = () => {
@@ -511,10 +701,26 @@ const ProductForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (!validateStep1()) {
       notification.error({
         message: 'Ошибка валидации',
-        description: 'Проверьте правильность заполнения полей',
+        description: 'Заполните название, цену и описание',
+        placement: 'topRight',
+      });
+      return;
+    }
+    if (variants.length > 0 && !validateStep2()) {
+      notification.error({
+        message: 'Ошибка валидации',
+        description: 'У каждого варианта должна быть отмечена хотя бы одна опция',
+        placement: 'topRight',
+      });
+      return;
+    }
+    if (variants.length > 0 && !validateStep3()) {
+      notification.error({
+        message: 'Ошибка валидации',
+        description: 'Проверьте: цена и остаток не должны быть отрицательными',
         placement: 'topRight',
       });
       return;
@@ -644,7 +850,7 @@ const ProductForm = () => {
         description: `Товар "${formData.name}" успешно ${isEditMode ? 'обновлен' : 'создан'}`,
         placement: 'topRight',
       });
-
+      hasUnsavedChangesRef.current = false;
       navigate(ROUTES.ADMIN_PRODUCTS);
     } catch (error) {
       console.error('Ошибка сохранения товара:', error);
@@ -675,16 +881,26 @@ const ProductForm = () => {
           <button
             className="admin-product-form__back-button"
             onClick={() => navigate(ROUTES.ADMIN_PRODUCTS)}
+            aria-label="Назад к списку товаров"
           >
             ← Назад к товарам
           </button>
           <h1 className="admin-product-form__title">
             {isEditMode ? 'Редактирование товара' : 'Добавление товара'}
           </h1>
+          <nav className="admin-product-form__steps" aria-label="Шаги формы товара">
+            <span className={currentStep === 1 ? 'admin-product-form__step--active' : ''} aria-current={currentStep === 1 ? 'step' : undefined}>1. Основное</span>
+            <span className="admin-product-form__step-sep" aria-hidden="true">→</span>
+            <span className={currentStep === 2 ? 'admin-product-form__step--active' : ''} aria-current={currentStep === 2 ? 'step' : undefined}>2. Варианты</span>
+            <span className="admin-product-form__step-sep" aria-hidden="true">→</span>
+            <span className={currentStep === 3 ? 'admin-product-form__step--active' : ''} aria-current={currentStep === 3 ? 'step' : undefined}>3. Комплектации</span>
+          </nav>
         </div>
 
         <form className="admin-product-form__form" onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
-          {/* Основная информация */}
+          {/* Шаг 1: Основное */}
+          {currentStep === 1 && (
+            <>
           <div className="admin-product-form__section">
             <h2 className="admin-product-form__section-title">Основная информация</h2>
 
@@ -743,6 +959,9 @@ const ProductForm = () => {
                     </option>
                   ))}
                 </select>
+                <p className="admin-product-form__hint admin-product-form__hint--small">
+                  Варианты и автоартикулы зависят от выбранной категории.
+                </p>
               </div>
             </div>
 
@@ -962,123 +1181,96 @@ const ProductForm = () => {
             )}
           </div>
 
-          {/* Варианты */}
+          <div className="admin-product-form__actions admin-product-form__actions--step">
+            {(!isEditMode || variants.length === 0) && (
+              <button
+                type="button"
+                className="admin-product-form__submit-button"
+                disabled={isLoading}
+                onClick={handleSaveAsSimple}
+                aria-label={isLoading ? 'Сохранение...' : 'Сохранить как простой товар без вариантов'}
+              >
+                {isLoading ? 'Сохранение...' : 'Сохранить как простой товар'}
+              </button>
+            )}
+            <button
+              type="button"
+              className="admin-product-form__submit-button"
+              aria-label="Перейти к шагу 2: Варианты"
+              onClick={() => {
+                if (!validateStep1()) {
+                  notification.error({
+                    message: 'Ошибка валидации',
+                    description: 'Заполните название, цену и описание',
+                    placement: 'topRight',
+                  });
+                  return;
+                }
+                // При первом переходе на шаг 2 заполняем варианты из конфига категории
+                if (categoryConfig?.variants?.length && variants.length === 0) {
+                  setVariants(
+                    categoryConfig.variants.map((v, i) => ({
+                      key: v.key,
+                      name: v.name,
+                      type: v.type || 'button',
+                      displayOrder: i,
+                      isRequired: true,
+                      options: [],
+                      availableOptions: v.options || [],
+                    }))
+                  );
+                }
+                setCurrentStep(2);
+              }}
+            >
+              Далее: указать варианты
+            </button>
+          </div>
+            </>
+          )}
+
+          {/* Шаг 2: Варианты */}
+          {currentStep === 2 && (
+            <>
           <div className="admin-product-form__section">
-            <div className="admin-product-form__section-header">
-              <h2 className="admin-product-form__section-title">Варианты товара</h2>
-              {formData.categoryId && categoryConfig && categoryConfig.variants && categoryConfig.variants.length > 0 && (
-                <button
-                  type="button"
-                  className="admin-product-form__add-button"
-                  onClick={addVariant}
-                >
-                  + Добавить вариант
-                </button>
-              )}
-              {formData.categoryId && (!categoryConfig || !categoryConfig.variants || categoryConfig.variants.length === 0) && (
-                <div style={{ fontSize: '0.875rem', color: '#e53e3e', marginTop: '0.5rem' }}>
-                  ⚠️ Конфигурация категории не загружена или нет вариантов
-                </div>
-              )}
-            </div>
+            <h2 className="admin-product-form__section-title">Варианты товара</h2>
+
             {!formData.categoryId ? (
               <p className="admin-product-form__hint">
-                Выберите категорию, чтобы добавить варианты товара
+                Выберите категорию на шаге 1, чтобы загрузить варианты из конфигурации или добавьте вариант вручную ниже.
               </p>
-            ) : variants.length === 0 ? (
-              <p className="admin-product-form__hint">
-                Нажмите "Добавить вариант" для добавления вариантов из конфигурации категории
-              </p>
-            ) : (
-              variants.map((variant, vIndex) => (
-                <div key={vIndex} className="admin-product-form__variant-group">
-                  <div className="admin-product-form__variant-header">
-                    <h3>{variant.name || `Вариант ${vIndex + 1}`}</h3>
-                  </div>
+            ) : null}
 
-                  <div className="admin-product-form__form-row">
-                    <div className="admin-product-form__form-group">
-                      <label className="admin-product-form__label">Ключ варианта</label>
-                      <input
-                        type="text"
-                        value={variant.key}
-                        readOnly
-                        className="admin-product-form__input admin-product-form__input--readonly"
-                        title="Ключ определяется категорией и не может быть изменен"
-                      />
-                    </div>
-
-                    <div className="admin-product-form__form-group">
-                      <label className="admin-product-form__label">Название варианта</label>
-                      <input
-                        type="text"
-                        value={variant.name}
-                        readOnly
-                        className="admin-product-form__input admin-product-form__input--readonly"
-                        title="Название определяется категорией и не может быть изменено"
-                      />
-                    </div>
-
-                    <div className="admin-product-form__form-group">
-                      <label className="admin-product-form__label">Тип *</label>
-                      <select
-                        value={variant.type}
-                        onChange={(e) => updateVariant(vIndex, 'type', e.target.value)}
-                        className="admin-product-form__input"
-                        title="Выберите тип варианта: 'color' для цветных блоков, 'button' для текстовых кнопок"
-                      >
-                        <option value="button">Кнопка</option>
-                        <option value="color">Цвет</option>
-                        <option value="select">Выпадающий список</option>
-                      </select>
-                      {variant.key === 'color' && variant.type !== 'color' && (
-                        <p className="admin-product-form__hint admin-product-form__hint--warning" style={{ color: '#ff6b6b', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-                          ⚠️ Для варианта с ключом "color" рекомендуется использовать тип "color" для отображения цветных блоков на странице товара
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                <div className="admin-product-form__form-group">
-                  <label className="admin-product-form__checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={variant.isRequired}
-                      onChange={(e) => updateVariant(vIndex, 'isRequired', e.target.checked)}
-                      className="admin-product-form__checkbox"
-                    />
-                    <span>Обязательный вариант</span>
-                  </label>
-                </div>
-
-                <div className="admin-product-form__variant-options">
-                  {variant.availableOptions && variant.availableOptions.length > 0 ? (
-                    <>
-                      <p className="admin-product-form__hint" style={{ marginBottom: 8 }}>
-                        Выберите доступные значения для этого товара (из списка категории):
-                      </p>
-                      <div className="admin-product-form__option-checkboxes" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', marginBottom: 12 }}>
-                        {variant.availableOptions.map((opt) => {
-                          const isSelected = variant.options.some((o) => o.key === opt.key);
+            {/* Варианты из конфига категории */}
+            {formData.categoryId && categoryConfig?.variants?.length > 0 && (
+              <>
+                <p className="admin-product-form__hint" style={{ marginBottom: '1rem' }}>
+                  Отметьте значения, которые есть у этой модели.
+                </p>
+                {categoryConfig.variants.map((configVariant) => {
+                  const vIndex = variants.findIndex((v) => v.key === configVariant.key);
+                  if (vIndex === -1) return null;
+                  const variant = variants[vIndex];
+                  return (
+                    <div key={variant.key} className="admin-product-form__variant-group admin-product-form__variant-group--step2">
+                      <h3 className="admin-product-form__variant-step2-title">{variant.name}</h3>
+                      <div className="admin-product-form__option-checkboxes admin-product-form__option-checkboxes--step2">
+                        {(variant.availableOptions || []).map((opt) => {
+                          const isSelected = variant.options?.some((o) => o.key === opt.key);
                           return (
                             <label
                               key={opt.key}
-                              style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                              className="admin-product-form__option-checkbox-label"
                             >
                               <input
                                 type="checkbox"
-                                checked={isSelected}
+                                checked={!!isSelected}
                                 onChange={() => toggleVariantOptionFromList(vIndex, opt)}
                               />
                               {variant.type === 'color' && opt.colorCode && (
                                 <span
-                                  style={{
-                                    width: 20,
-                                    height: 20,
-                                    borderRadius: 4,
-                                    backgroundColor: opt.colorCode,
-                                    border: '1px solid #ccc',
-                                  }}
+                                  className="admin-product-form__option-color-swatch"
+                                  style={{ backgroundColor: opt.colorCode }}
                                   title={opt.value}
                                 />
                               )}
@@ -1087,319 +1279,246 @@ const ProductForm = () => {
                           );
                         })}
                       </div>
-                      {variant.options.length > 0 && (
-                        <p className="admin-product-form__hint" style={{ marginBottom: 4 }}>
+                      {variant.options?.length > 0 && (
+                        <p className="admin-product-form__hint admin-product-form__hint--small">
                           Выбрано: {variant.options.length}
                         </p>
                       )}
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      className="admin-product-form__add-option-button"
-                      onClick={() => addVariantOption(vIndex)}
-                    >
-                      + Добавить опцию
-                    </button>
-                  )}
-
-                  {/* Детальные карточки опций — только если вариант без списка из категории (ручной ввод) */}
-                  {(!variant.availableOptions || variant.availableOptions.length === 0) &&
-                    variant.options.map((option, oIndex) => (
-                    <div key={oIndex} className="admin-product-form__option-group">
-                      <div className="admin-product-form__option-header">
-                        <h4>Опция {oIndex + 1}</h4>
-                        <button
-                          type="button"
-                          className="admin-product-form__remove-button"
-                          onClick={() => removeVariantOption(vIndex, oIndex)}
-                        >
-                          Удалить опцию
-                        </button>
-                      </div>
-
-                      <div className="admin-product-form__form-row">
-                        <div className="admin-product-form__form-group">
-                          <label className="admin-product-form__label">Ключ опции *</label>
-                          <input
-                            type="text"
-                            value={option.key}
-                            onChange={(e) =>
-                              updateVariantOption(vIndex, oIndex, 'key', e.target.value)
-                            }
-                            placeholder="color-black, size-42..."
-                            className={`admin-product-form__input ${errors[`variant_${vIndex}_option_${oIndex}_key`] ? 'admin-product-form__input--error' : ''}`}
-                          />
-                        </div>
-
-                        <div className="admin-product-form__form-group">
-                          <label className="admin-product-form__label">Значение опции *</label>
-                          <input
-                            type="text"
-                            value={option.value}
-                            onChange={(e) =>
-                              updateVariantOption(vIndex, oIndex, 'value', e.target.value)
-                            }
-                            placeholder="Черный, 42..."
-                            className={`admin-product-form__input ${errors[`variant_${vIndex}_option_${oIndex}_value`] ? 'admin-product-form__input--error' : ''}`}
-                          />
-                        </div>
-
-                        {variant.type === 'color' && (
-                          <div className="admin-product-form__form-group">
-                            <label className="admin-product-form__label">Цвет (HEX)</label>
-                            <input
-                              type="color"
-                              value={option.colorCode || '#000000'}
-                              onChange={(e) =>
-                                updateVariantOption(vIndex, oIndex, 'colorCode', e.target.value)
-                              }
-                              className="admin-product-form__input admin-product-form__input--color"
-                            />
-                          </div>
-                        )}
-
-                        <div className="admin-product-form__form-group">
-                          <label className="admin-product-form__label">Модификатор цены</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={option.priceModifier}
-                            onChange={(e) =>
-                              updateVariantOption(
-                                vIndex,
-                                oIndex,
-                                'priceModifier',
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className="admin-product-form__input"
-                            placeholder="0.00"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="admin-product-form__form-row">
-                        <div className="admin-product-form__form-group">
-                          <label className="admin-product-form__label">Количество на складе</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={option.stockQuantity}
-                            onChange={(e) =>
-                              updateVariantOption(
-                                vIndex,
-                                oIndex,
-                                'stockQuantity',
-                                parseInt(e.target.value) || 0
-                              )
-                            }
-                            className="admin-product-form__input"
-                          />
-                        </div>
-
-                        <div className="admin-product-form__form-group">
-                          <label className="admin-product-form__checkbox-label">
-                            <input
-                              type="checkbox"
-                              checked={option.isDefault}
-                              onChange={(e) =>
-                                updateVariantOption(vIndex, oIndex, 'isDefault', e.target.checked)
-                              }
-                              className="admin-product-form__checkbox"
-                            />
-                            <span>По умолчанию</span>
-                          </label>
-                        </div>
-
-                        <div className="admin-product-form__form-group">
-                          <label className="admin-product-form__checkbox-label">
-                            <input
-                              type="checkbox"
-                              checked={option.isAvailable}
-                              onChange={(e) =>
-                                updateVariantOption(
-                                  vIndex,
-                                  oIndex,
-                                  'isAvailable',
-                                  e.target.checked
-                                )
-                              }
-                              className="admin-product-form__checkbox"
-                            />
-                            <span>Доступна</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Изображения для опции */}
-                      <div className="admin-product-form__form-group">
-                        <label className="admin-product-form__label">Изображения опции</label>
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={(e) => handleOptionImageUpload(vIndex, oIndex, e)}
-                          className="admin-product-form__file-input"
-                          ref={(el) => {
-                            if (el) {
-                              optionFileInputRefs.current[`${vIndex}_${oIndex}`] = el;
-                            }
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="admin-product-form__upload-button"
-                          onClick={() =>
-                            optionFileInputRefs.current[`${vIndex}_${oIndex}`]?.click()
-                          }
-                        >
-                          Загрузить изображения
-                        </button>
-
-                        {option.images && option.images.length > 0 && (
-                          <div className="admin-product-form__image-previews">
-                            {option.images.map((img, imgIndex) => (
-                              <div key={imgIndex} className="admin-product-form__image-preview">
-                                <img
-                                  src={img.preview || img}
-                                  alt={`Опция ${oIndex + 1} - ${imgIndex + 1}`}
-                                />
-                                <button
-                                  type="button"
-                                  className="admin-product-form__remove-image-button"
-                                  onClick={() => removeOptionImage(vIndex, oIndex, imgIndex)}
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
                     </div>
-                  ))}
+                  );
+                })}
+              </>
+            )}
+
+            {/* Ручной вариант: когда категория не выбрана или в конфиге нет вариантов */}
+            {(!formData.categoryId || !categoryConfig || !categoryConfig.variants?.length) && (
+              <div className="admin-product-form__manual-variant">
+                <h3 className="admin-product-form__manual-variant-title">Добавить вариант вручную</h3>
+                <p className="admin-product-form__hint">
+                  У категории нет предустановленных вариантов. Укажите название и значения через запятую.
+                </p>
+                <div className="admin-product-form__form-row">
+                  <div className="admin-product-form__form-group">
+                    <label className="admin-product-form__label">Название варианта</label>
+                    <input
+                      type="text"
+                      value={manualVariantName}
+                      onChange={(e) => setManualVariantName(e.target.value)}
+                      className="admin-product-form__input"
+                      placeholder="Например: Размер"
+                    />
+                  </div>
+                  <div className="admin-product-form__form-group">
+                    <label className="admin-product-form__label">Значения (через запятую)</label>
+                    <input
+                      type="text"
+                      value={manualVariantValues}
+                      onChange={(e) => setManualVariantValues(e.target.value)}
+                      className="admin-product-form__input"
+                      placeholder="42, 44, 46, 48"
+                    />
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  className="admin-product-form__add-button"
+                  onClick={() => {
+                    addManualVariant(manualVariantName, manualVariantValues);
+                    setManualVariantName('');
+                    setManualVariantValues('');
+                  }}
+                  disabled={!manualVariantName.trim() || !manualVariantValues.trim()}
+                >
+                  + Добавить вариант
+                </button>
               </div>
-              ))
+            )}
+
+            {/* Подсчёт комбинаций */}
+            {variants.length > 0 && (
+              <div className="admin-product-form__variants-summary">
+                <p className="admin-product-form__hint">
+                  Будет создано <strong>{combinationsCount}</strong> комбинаций.
+                </p>
+              </div>
             )}
           </div>
 
-          {/* Комплектации */}
-          {variants.length > 0 && (
+          <div className="admin-product-form__actions admin-product-form__actions--step">
+            <button type="button" className="admin-product-form__cancel-button" onClick={() => setCurrentStep(1)} aria-label="Назад к шагу 1: Основное">
+              Назад
+            </button>
+            <button
+              type="button"
+              className="admin-product-form__submit-button"
+              aria-label="Перейти к шагу 3: Комплектации"
+              onClick={() => {
+                if (variants.length === 0) {
+                  notification.warning({
+                    message: 'Нет вариантов',
+                    description: 'Добавьте хотя бы один вариант или сохраните товар как простой на шаге 1.',
+                    placement: 'topRight',
+                  });
+                  return;
+                }
+                if (!validateStep2()) {
+                  notification.warning({
+                    message: 'Выберите значения',
+                    description: 'У каждого варианта должна быть отмечена хотя бы одна опция.',
+                    placement: 'topRight',
+                  });
+                  return;
+                }
+                setCurrentStep(3);
+              }}
+            >
+              Далее: комплектации
+            </button>
+          </div>
+            </>
+          )}
+
+          {/* Шаг 3: Комплектации */}
+          {currentStep === 3 && (
+            <>
+          {variants.length > 0 ? (
             <div className="admin-product-form__section">
               <h2 className="admin-product-form__section-title">Комплектации</h2>
               <p className="admin-product-form__hint">
-                Создайте комплектации товара, выбрав доступные комбинации вариантов
+                Проверьте цены и остатки. Ключи вариантов в интерфейсе не отображаются.
               </p>
-              
-              <button
-                type="button"
-                className="admin-product-form__add-button"
-                onClick={addCombination}
-              >
-                + Добавить комплектацию
-              </button>
 
-              {combinations.map((combination, combIndex) => (
-                <div key={combination.id || combIndex} className="admin-product-form__combination-group">
-                  <div className="admin-product-form__combination-header">
-                    <h3>Комплектация {combIndex + 1}</h3>
+              {/* Массовые действия */}
+              <div className="admin-product-form__bulk-actions">
+                <div className="admin-product-form__bulk-row">
+                  <label className="admin-product-form__label">Одна цена для всех</label>
+                  <div className="admin-product-form__bulk-input-row">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={bulkPrice}
+                      onChange={(e) => setBulkPrice(e.target.value)}
+                      className="admin-product-form__input admin-product-form__bulk-input"
+                      placeholder={formData.basePrice || '0'}
+                    />
                     <button
                       type="button"
-                      className="admin-product-form__remove-button"
-                      onClick={() => removeCombination(combIndex)}
+                      className="admin-product-form__add-button"
+                      onClick={() => { applyBulkPrice(bulkPrice); setBulkPrice(''); }}
+                      aria-label="Применить одну цену ко всем комплектациям"
                     >
-                      Удалить
+                      Применить
                     </button>
                   </div>
-
-                  <div className="admin-product-form__form-row">
-                    {variants.map((variant, vIdx) => {
-                      const selectedOption = combination.variants?.[variant.key] || '';
-                      return (
-                        <div key={`${variant.key}-${vIdx}`} className="admin-product-form__form-group">
-                          <label className="admin-product-form__label">
-                            {variant.name} *
-                          </label>
-                          <select
-                            value={selectedOption}
-                            onChange={(e) => updateCombinationVariant(combIndex, variant.key, e.target.value)}
-                            className="admin-product-form__input"
-                            required
-                          >
-                            <option value="">Выберите {variant.name.toLowerCase()}</option>
-                            {variant.options?.map((option) => (
-                              <option key={option.key} value={option.key}>
-                                {option.value}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="admin-product-form__form-row">
-                    <div className="admin-product-form__form-group">
-                      <label className="admin-product-form__label">Цена комплектации</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={combination.price || formData.basePrice}
-                        onChange={(e) => updateCombination(combIndex, 'price', parseFloat(e.target.value) || parseFloat(formData.basePrice) || 0)}
-                        className="admin-product-form__input"
-                        placeholder={formData.basePrice || '0.00'}
-                      />
-                    </div>
-
-                    <div className="admin-product-form__form-group">
-                      <label className="admin-product-form__label">Количество на складе</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={combination.stockQuantity || 0}
-                        onChange={(e) => updateCombination(combIndex, 'stockQuantity', parseInt(e.target.value) || 0)}
-                        className="admin-product-form__input"
-                      />
-                    </div>
-
-                    <div className="admin-product-form__form-group">
-                      <label className="admin-product-form__label">Артикул (SKU)</label>
-                      <input
-                        type="text"
-                        value={combination.sku || ''}
-                        onChange={(e) => updateCombination(combIndex, 'sku', e.target.value)}
-                        className="admin-product-form__input"
-                        placeholder={
-                          formData.categoryId && categories.find((c) => c.id === Number(formData.categoryId))?.skuAutoGenerate
-                            ? 'Будет сгенерирован автоматически'
-                            : 'Необязательно'
-                        }
-                      />
-                      {formData.categoryId && categories.find((c) => c.id === Number(formData.categoryId))?.skuAutoGenerate && (
-                        <p className="admin-product-form__hint" style={{ marginTop: 4, fontSize: '0.8rem', color: '#666' }}>
-                          Оставьте пустым — артикул подставится по коду категории и счётчику (6 цифр).
-                        </p>
-                      )}
-                    </div>
+                </div>
+                <div className="admin-product-form__bulk-row">
+                  <label className="admin-product-form__label">Остаток для всех</label>
+                  <div className="admin-product-form__bulk-input-row">
+                    <input
+                      type="number"
+                      min="0"
+                      value={bulkStock}
+                      onChange={(e) => setBulkStock(e.target.value)}
+                      className="admin-product-form__input admin-product-form__bulk-input"
+                      placeholder="0"
+                    />
+                    <button
+                      type="button"
+                      className="admin-product-form__add-button"
+                      onClick={() => { applyBulkStock(bulkStock); setBulkStock(''); }}
+                      aria-label="Применить один остаток ко всем комплектациям"
+                    >
+                      Применить
+                    </button>
                   </div>
                 </div>
-              ))}
+              </div>
 
-              {combinations.length === 0 && (
-                <p className="admin-product-form__hint">
-                  Добавьте опции к вариантам, затем создайте комплектации
+              <div className="admin-product-form__table-wrap" role="region" aria-label="Таблица комплектаций: варианты, цена, остаток, артикул">
+                <p className="admin-product-form__table-scroll-hint" aria-hidden="true">На узких экранах таблицу можно прокрутить вправо.</p>
+                <table className="admin-product-form__combinations-table" aria-label="Комплектации товара">
+                  <caption className="admin-product-form__table-caption">Цена, остаток и артикул по комбинациям вариантов</caption>
+                  <thead>
+                    <tr>
+                      {variants.map((v) => (
+                        <th key={v.key} scope="col">{v.name}</th>
+                      ))}
+                      <th scope="col">Цена</th>
+                      <th scope="col">Остаток</th>
+                      <th scope="col">Артикул</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {combinations.map((combination, combIndex) => (
+                      <tr key={getCombinationKey(combination.variants) || combIndex}>
+                        {variants.map((v) => {
+                          const optionKey = combination.variants?.[v.key];
+                          const option = v.options?.find((o) => o.key === optionKey);
+                          return (
+                            <td key={v.key}>{option ? option.value : '—'}</td>
+                          );
+                        })}
+                        <td>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={combination.price ?? ''}
+                            onChange={(e) => updateCombination(combIndex, 'price', parseFloat(e.target.value) || 0)}
+                            className="admin-product-form__input admin-product-form__table-input"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            value={combination.stockQuantity ?? ''}
+                            onChange={(e) => updateCombination(combIndex, 'stockQuantity', parseInt(e.target.value, 10) || 0)}
+                            className="admin-product-form__input admin-product-form__table-input"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={combination.sku ?? ''}
+                            onChange={(e) => updateCombination(combIndex, 'sku', e.target.value)}
+                            className="admin-product-form__input admin-product-form__table-input"
+                            placeholder={
+                              formData.categoryId && categories.find((c) => c.id === Number(formData.categoryId))?.skuAutoGenerate
+                                ? 'Авто'
+                                : ''
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {formData.categoryId && categories.find((c) => c.id === Number(formData.categoryId))?.skuAutoGenerate && (
+                <p className="admin-product-form__hint admin-product-form__hint--small">
+                  Пустой артикул — подставится автоматически по категории.
                 </p>
               )}
+            </div>
+          ) : (
+            <div className="admin-product-form__section">
+              <p className="admin-product-form__hint">
+                Варианты не добавлены. Сохраните товар как простой или вернитесь на шаг 2 и добавьте варианты.
+              </p>
             </div>
           )}
 
           <div className="admin-product-form__actions">
+            <button type="button" className="admin-product-form__cancel-button" onClick={() => setCurrentStep(2)} aria-label="Назад к шагу 2: Варианты">
+              Назад
+            </button>
             <button
               type="button"
               className="admin-product-form__cancel-button"
               onClick={() => navigate(ROUTES.ADMIN_PRODUCTS)}
+              aria-label="Отмена и возврат к списку товаров"
             >
               Отмена
             </button>
@@ -1407,55 +1526,15 @@ const ProductForm = () => {
               type="submit"
               className="admin-product-form__submit-button"
               disabled={isLoading}
+              aria-label={isLoading ? 'Сохранение...' : isEditMode ? 'Сохранить изменения товара' : 'Создать товар'}
             >
               {isLoading ? 'Сохранение...' : isEditMode ? 'Сохранить изменения' : 'Создать товар'}
             </button>
           </div>
+            </>
+          )}
         </form>
       </div>
-
-      {/* Модальное окно выбора варианта из конфигурации */}
-      <Modal
-        title="Выберите вариант"
-        open={showVariantSelectModal}
-        onCancel={() => setShowVariantSelectModal(false)}
-        footer={null}
-        width={600}
-      >
-        {categoryConfig && categoryConfig.variants ? (
-          <div className="admin-product-form__variant-select">
-            {categoryConfig.variants
-              .filter(configVariant => !variants.some(v => v.key === configVariant.key))
-              .map((configVariant) => (
-                <button
-                  key={configVariant.key}
-                  type="button"
-                  className="admin-product-form__variant-select-item"
-                  onClick={() => handleSelectVariantFromConfig(configVariant.key)}
-                >
-                  <div className="admin-product-form__variant-select-info">
-                    <h4>{configVariant.name}</h4>
-                    <p className="admin-product-form__variant-select-key">
-                      Ключ: <code>{configVariant.key}</code>
-                    </p>
-                    <p className="admin-product-form__variant-select-type">
-                      Тип: {configVariant.type === 'color' ? 'Цвет' : configVariant.type === 'button' ? 'Кнопка' : 'Выпадающий список'}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            {categoryConfig.variants.filter(configVariant => !variants.some(v => v.key === configVariant.key)).length === 0 && (
-              <p className="admin-product-form__hint">
-                Все доступные варианты уже добавлены к товару
-              </p>
-            )}
-          </div>
-        ) : (
-          <p className="admin-product-form__hint">
-            Нет доступных вариантов для выбора
-          </p>
-        )}
-      </Modal>
     </div>
   );
 };
