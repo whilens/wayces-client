@@ -38,6 +38,86 @@
   margin: 0;
 }
 
+.admin-product-form__steps {
+  margin-top: 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+.admin-product-form__step--active {
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.admin-product-form__step-sep {
+  margin: 0 0.5rem;
+  color: var(--border-color);
+}
+
+.admin-product-form__actions--step {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Шаг 2: варианты — компактные блоки */
+.admin-product-form__variant-group--step2 {
+  margin-bottom: 1.5rem;
+}
+
+.admin-product-form__variant-step2-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.admin-product-form__option-checkboxes--step2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.admin-product-form__option-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+.admin-product-form__option-color-swatch {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.admin-product-form__hint--small {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.admin-product-form__manual-variant {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 0.125rem solid #e2e8f0;
+}
+
+.admin-product-form__manual-variant-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem 0;
+}
+
+.admin-product-form__variants-summary {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 0.125rem solid #e2e8f0;
+}
+
 .admin-product-form__form {
   background: var(--card-bg);
   border-radius: 0.75rem;
@@ -430,6 +510,14 @@
   .admin-product-form__actions button {
     width: 100%;
   }
+
+  .admin-product-form__table-scroll-hint {
+    display: block;
+  }
+
+  .admin-product-form__bulk-actions {
+    flex-direction: column;
+  }
 }
 
 /* Стили для модального окна выбора варианта */
@@ -485,5 +573,134 @@
   margin: 0.25rem 0 0 0;
   font-size: 0.875rem;
   color: var(--text-secondary);
+}
+
+/* Шаг 3: таблица комбинаций и массовые действия */
+.admin-product-form__bulk-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.admin-product-form__bulk-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-product-form__bulk-input {
+  width: 8rem;
+  max-width: 100%;
+}
+
+.admin-product-form__table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1rem 0;
+  border: 0.125rem solid var(--border-color);
+  border-radius: 0.5rem;
+  background: var(--card-bg);
+  min-width: 0;
+}
+
+.admin-product-form__table-scroll-hint {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  display: none;
+}
+
+.admin-product-form__table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.admin-product-form__combinations-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.admin-product-form__combinations-table th,
+.admin-product-form__combinations-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 0.0625rem solid var(--border-color);
+  text-align: left;
+}
+
+.admin-product-form__combinations-table th {
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  white-space: nowrap;
+}
+
+.admin-product-form__combinations-table tr:hover td {
+  background: var(--bg-secondary);
+}
+
+.admin-product-form__table-input {
+  width: 100%;
+  min-width: 5rem;
+  padding: 0.375rem 0.5rem;
+  border: 0.125rem solid var(--border-color);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.admin-product-form__bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--bg-tertiary);
+  border-radius: 0.5rem;
+  border: 0.125rem solid var(--border-color);
+}
+
+.admin-product-form__bulk-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-product-form__bulk-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.admin-product-form__bulk-group input {
+  width: 6rem;
+  padding: 0.375rem 0.5rem;
+  border: 0.125rem solid var(--border-color);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.admin-product-form__bulk-group button {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-product-form__bulk-group button:hover {
+  opacity: 0.9;
 }
 
