@@ -197,6 +197,7 @@ export const adminCategoriesAPI = {
   getById: (id) => api.get(`/admin/categories/${id}`),
   create: (data) => api.post('/admin/categories', data),
   update: (id, data) => api.put(`/admin/categories/${id}`, data),
+  delete: (id) => api.delete(`/admin/categories/${id}`),
   getConfig: (categoryId) => api.get(`/admin/category-config/${categoryId}`),
   getFullConfig: (categoryId) => api.get(`/admin/category-config/${categoryId}/full`),
   // Характеристики
