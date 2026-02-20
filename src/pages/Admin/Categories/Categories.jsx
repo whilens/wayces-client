@@ -63,12 +63,12 @@ const AdminCategories = () => {
       cancelText: 'Отмена',
       onOk: async () => {
         try {
-          // TODO: Добавить API для удаления категории
-          notification.warning({
-            message: 'Функция удаления',
-            description: 'API для удаления категорий пока не реализовано',
+          await adminCategoriesAPI.delete(id);
+          notification.success({
+            message: 'Категория удалена',
             placement: 'topRight',
           });
+          fetchCategories();
         } catch (error) {
           notification.error({
             message: 'Ошибка',

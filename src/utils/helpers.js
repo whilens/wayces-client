@@ -35,6 +35,7 @@ export const calculateDiscountedPrice = (originalPrice, discountType, discountVa
   if (discountType === 'percentage') {
     discountAmount = (originalPrice * parseFloat(discountValue)) / 100;
     discountedPrice = originalPrice - discountAmount;
+    discountedPrice = Math.round(discountedPrice); // убираем копейки при процентной скидке
   } else if (discountType === 'fixed') {
     discountAmount = parseFloat(discountValue);
     discountedPrice = originalPrice - discountAmount;

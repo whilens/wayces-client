@@ -102,12 +102,28 @@ export const useProductVariants = (product, combinationFromUrl) => {
     return defaultImg ? [getImageUrl(defaultImg)] : [''];
   }, [product, selectedVariants, variantOptionsMap]);
 
-  // Вычисление итоговой цены с учетом выбранных вариантов
+  // Текущая комплектация по выбранным вариантам (для цены, остатка, SKU)
+  const currentCombination = useMemo(() => {
+    if (!selectedVariants || Object.keys(selectedVariants).length === 0) return null;
+    const key = Object.keys(selectedVariants)
+      .sort()
+      .map((k) => `${k}-${selectedVariants[k]}`)
+      .join('_');
+    const entry = combinationsMap.get(key);
+    return entry ? entry.combination : null;
+  }, [selectedVariants, combinationsMap]);
+
+  // Вычисление итоговой цены: приоритет у цены комплектации, иначе базовая цена + модификаторы опций
   const finalPrice = useMemo(() => {
     if (!product) return 0;
-    
+
+    if (currentCombination?.price != null) {
+      const combPrice = parseFloat(currentCombination.price);
+      if (!Number.isNaN(combPrice)) return combPrice;
+    }
+
     let price = product.basePrice || product.price || 0;
-    
+
     if (product.variants && Object.keys(selectedVariants).length > 0) {
       Object.keys(selectedVariants).forEach((variantKey) => {
         const optionMap = variantOptionsMap[variantKey];
@@ -119,9 +135,9 @@ export const useProductVariants = (product, combinationFromUrl) => {
         }
       });
     }
-    
+
     return price;
-  }, [product, selectedVariants, variantOptionsMap]);
+  }, [product, selectedVariants, variantOptionsMap, currentCombination]);
 
   // Формируем полное название товара с вариантами
   const productFullName = useMemo(() => {
@@ -151,17 +167,6 @@ export const useProductVariants = (product, combinationFromUrl) => {
       return entry && entry.stockQuantity > 0;
     };
   }, [product, combinationsMap]);
-
-  // Текущая комплектация по выбранным вариантам (для цены, остатка, блокировки кнопок)
-  const currentCombination = useMemo(() => {
-    if (!selectedVariants || Object.keys(selectedVariants).length === 0) return null;
-    const key = Object.keys(selectedVariants)
-      .sort()
-      .map((k) => `${k}-${selectedVariants[k]}`)
-      .join('_');
-    const entry = combinationsMap.get(key);
-    return entry ? entry.combination : null;
-  }, [selectedVariants, combinationsMap]);
 
   // Проверка доступности опции: есть хотя бы одна комбинация с этой опцией (остаток не учитываем — опция может быть выбрана, но «нет в наличии»)
   const isOptionAvailable = useMemo(() => {
