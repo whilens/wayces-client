@@ -4,7 +4,7 @@ import { setAccessToken, setAdmin } from '../store/slices/authSlice';
 import { setUserAccessToken } from '../store/slices/userSlice';
 
 // Базовый URL API (можно вынести в .env)
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Создаем экземпляр axios с базовой конфигурацией
 const api = axios.create({
@@ -25,7 +25,7 @@ api.interceptors.request.use(
     }
     
     // Версия фронта (из билда) — для проверки на сервере и автообновления
-    const frontVersion = process.env.REACT_APP_FRONTEND_VERSION;
+    const frontVersion = import.meta.env.VITE_FRONTEND_VERSION;
     if (frontVersion) config.headers['X-Client-Version'] = frontVersion;
 
     // Для админских запросов используем accessToken
@@ -281,6 +281,14 @@ export const accountAPI = {
 export const searchAPI = {
   getSuggestions: (query, limit = 5) => api.get('/search/suggestions', { params: { q: query, limit } }),
   getSimilar: (productId, limit = 6) => api.get(`/search/similar/${productId}`, { params: { limit } }),
+};
+
+/** ИИ-консультант магазина (без прав админа; ключ LLM только на сервере) */
+export const chatConsultAPI = {
+  consult: (body) =>
+    api.post('/chat/consult', body, {
+      timeout: 120000,
+    }),
 };
 
 // API методы для push-подписок

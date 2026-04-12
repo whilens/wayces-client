@@ -6,6 +6,7 @@ import { addItem, updateQuantity, removeItem } from '../../store/slices/cartSlic
 import { addToFavorites, removeFromFavorites, checkFavorite } from '../../store/slices/favoritesSlice';
 import { openAuthModal } from '../../store/slices/userSlice';
 import { formatPrice, calculateDiscountedPrice } from '../../utils/helpers';
+import { buildCombinationKeyFromVariants } from '../../utils/variantHelpers';
 import { getImageUrl } from '../../utils/imageUtils';
 import './ProductCard.css';
 
@@ -29,6 +30,9 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
     description,
     variants, // Варианты комбинации
     combinationKey, // Ключ комбинации
+    combinationId, // id строки product_combinations (список каталога с БД)
+    linkCombinationKey, // Для displayAsProduct: куда вести с предвыбором (с бэкенда)
+    linkCombinationId,
     displayAsProduct, // Одна карточка на товар — выбор варианта на странице товара
     discountType, // Тип скидки
     discountValue, // Значение скидки
@@ -47,6 +51,40 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
   const priceLabel = isProductLevel
     ? (priceMax != null && priceMax !== price ? `от ${formatPrice(displayPrice)} – ${formatPrice(priceMaxDiscounted)}` : `от ${formatPrice(displayPrice)}`)
     : null;
+
+  const resolvedCombinationKey = useMemo(
+    () => combinationKey || buildCombinationKeyFromVariants(variants),
+    [combinationKey, variants]
+  );
+
+  const productDetailPath = useMemo(() => {
+    const pid = baseProductId;
+    const qs = new URLSearchParams();
+    const setCombId = (raw) => {
+      const n = raw != null ? Number(raw) : NaN;
+      if (Number.isFinite(n) && n > 0) qs.set('combinationId', String(n));
+    };
+    if (isProductLevel) {
+      setCombId(linkCombinationId);
+      if (!qs.has('combinationId') && linkCombinationKey) {
+        qs.set('combination', linkCombinationKey);
+      }
+    } else {
+      setCombId(combinationId);
+      if (!qs.has('combinationId') && resolvedCombinationKey) {
+        qs.set('combination', resolvedCombinationKey);
+      }
+    }
+    const s = qs.toString();
+    return s ? `/products/${pid}?${s}` : `/products/${pid}`;
+  }, [
+    baseProductId,
+    isProductLevel,
+    linkCombinationId,
+    linkCombinationKey,
+    combinationId,
+    resolvedCombinationKey,
+  ]);
 
   // Проверяем, есть ли товар в корзине
   const cartItem = useMemo(() => {
@@ -92,13 +130,8 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
   }, [dispatch, cartItem]);
 
   const handleCardClick = useCallback(() => {
-    const url = `/products/${baseProductId}`;
-    const searchParams = new URLSearchParams();
-    if (!isProductLevel && combinationKey) {
-      searchParams.set('combination', combinationKey);
-    }
-    navigate(`${url}${searchParams.toString() ? '?' + searchParams.toString() : ''}`);
-  }, [navigate, baseProductId, combinationKey, isProductLevel]);
+    navigate(productDetailPath);
+  }, [navigate, productDetailPath]);
 
   // Проверяем избранное при монтировании
   React.useEffect(() => {
@@ -272,6 +305,9 @@ const ProductCard = React.memo(({ product, viewMode = 'grid' }) => {
     prev.fullName === next.fullName &&
     prev.name === next.name &&
     prev.combinationKey === next.combinationKey &&
+    prev.combinationId === next.combinationId &&
+    prev.linkCombinationKey === next.linkCombinationKey &&
+    prev.linkCombinationId === next.linkCombinationId &&
     prev.displayAsProduct === next.displayAsProduct &&
     prev.image === next.image &&
     prev.defaultImage === next.defaultImage &&

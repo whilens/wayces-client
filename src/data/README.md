@@ -28,8 +28,8 @@ import { getMockProducts, getMockProductById, getFeaturedProducts } from '../uti
 
 В файле `.env` можно установить:
 ```
-REACT_APP_USE_MOCK_DATA=true  # использовать мок данные (по умолчанию)
-REACT_APP_USE_MOCK_DATA=false  # использовать реальный API
+VITE_USE_MOCK_DATA=true   # использовать мок данные (по умолчанию)
+VITE_USE_MOCK_DATA=false  # использовать реальный API
 ```
 
 ## Категории товаров

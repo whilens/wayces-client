@@ -1,0 +1,132 @@
+.chat-consultant-widget__fab {
+  right: 24px;
+  bottom: 24px;
+}
+
+.chat-consultant-widget__drawer .ant-drawer-body {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 16px;
+  max-height: calc(100vh - 120px);
+}
+
+.chat-consultant-widget__hint {
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.chat-consultant-widget__messages {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  min-height: 160px;
+}
+
+.chat-consultant-widget__bubble {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  max-width: 100%;
+}
+
+.chat-consultant-widget__bubble--user {
+  margin-left: 24px;
+  background: var(--ant-color-primary-bg, #e6f4ff);
+  border: 1px solid var(--ant-color-primary-border, #91caff);
+}
+
+.chat-consultant-widget__bubble--assistant {
+  margin-right: 16px;
+  background: var(--ant-color-fill-alter, #fafafa);
+  border: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+}
+
+[data-theme='dark'] .chat-consultant-widget__bubble--user {
+  background: rgba(22, 119, 255, 0.15);
+  border-color: rgba(22, 119, 255, 0.35);
+}
+
+[data-theme='dark'] .chat-consultant-widget__bubble--assistant {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.chat-consultant-widget__text {
+  margin-bottom: 0 !important;
+  white-space: pre-wrap;
+}
+
+.chat-consultant-widget__text--error {
+  color: var(--ant-color-error, #ff4d4f);
+}
+
+.chat-consultant-widget__products {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.chat-consultant-widget__products li {
+  margin-bottom: 10px;
+}
+
+.chat-consultant-widget__product-thumb-wrap {
+  display: block;
+  margin-bottom: 6px;
+  width: fit-content;
+}
+
+.chat-consultant-widget__product-thumb {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+  vertical-align: middle;
+}
+
+.chat-consultant-widget__product-line {
+  display: block;
+}
+
+.chat-consultant-widget__price {
+  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.45));
+  font-size: 12px;
+}
+
+.chat-consultant-widget__combinations {
+  margin: 6px 0 0;
+  padding-left: 14px;
+  list-style: disc;
+  font-size: 12px;
+}
+
+.chat-consultant-widget__combinations li {
+  margin-bottom: 4px;
+}
+
+.chat-consultant-widget__combination-link {
+  color: var(--ant-color-primary, #1677ff);
+}
+
+.chat-consultant-widget__combination-meta {
+  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.45));
+  font-size: 11px;
+}
+
+.chat-consultant-widget__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.chat-consultant-widget__input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.chat-consultant-widget__send {
+  align-self: flex-end;
+}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { adminCategoriesAPI } from '../../../services/api';
 import { ROUTES } from '../../../utils/constants';
 import { notification, Modal, Input, Select } from 'antd';
@@ -8,14 +8,60 @@ import './Categories.css';
 const { Option } = Select;
 const { TextArea } = Input;
 
-const AdminCategories = () => {
+type AdminCategory = {
+  id: number;
+  name: string;
+  slug?: string | null;
+  parentId?: number | null;
+  description?: string | null;
+  imageUrl?: string | null;
+  displayOrder?: number | null;
+  skuCode?: number | null;
+  skuAutoGenerate?: boolean | null;
+  listCombinationsSeparately?: boolean | null;
+};
+
+type CategoryPayload = {
+  name: string;
+  slug: string;
+  parentId: number | null;
+  description: string | null;
+  imageUrl: string | null;
+  displayOrder: number;
+  skuCode: number | null;
+  skuAutoGenerate: boolean;
+  listCombinationsSeparately: boolean;
+};
+
+type CategoryFormState = {
+  name: string;
+  slug: string;
+  parentId: number | null;
+  description: string;
+  imageUrl: string;
+  displayOrder: number;
+  skuCode: string;
+  skuAutoGenerate: boolean;
+  listCombinationsSeparately: boolean;
+};
+
+const showApiError = (error: any, fallback: string) => {
+  const description = error?.response?.data?.error || fallback;
+  notification.error({
+    message: 'Ошибка',
+    description,
+    placement: 'topRight',
+  });
+};
+
+const AdminCategories: React.FC = () => {
   const navigate = useNavigate();
-  const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [editingCategory, setEditingCategory] = useState<AdminCategory | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     fetchCategories();
@@ -26,22 +72,19 @@ const AdminCategories = () => {
       setIsLoading(true);
       setError(null);
       const response = await adminCategoriesAPI.getAll();
-      setCategories(response.data || []);
-    } catch (err) {
+      setCategories((response.data || []) as AdminCategory[]);
+    } catch (err: any) {
       console.error('Ошибка загрузки категорий:', err);
-      setError(err.response?.data?.error || 'Ошибка загрузки категорий');
-      notification.error({
-        message: 'Ошибка',
-        description: err.response?.data?.error || 'Не удалось загрузить категории',
-        placement: 'topRight',
-      });
+      const message = err?.response?.data?.error || 'Ошибка загрузки категорий';
+      setError(message);
+      showApiError(err, 'Не удалось загрузить категории');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleConfigClick = (categoryId) => {
-    navigate(ROUTES.ADMIN_CATEGORY_CONFIG.replace(':categoryId', categoryId));
+  const handleConfigClick = (categoryId: number) => {
+    navigate(ROUTES.ADMIN_CATEGORY_CONFIG.replace(':categoryId', String(categoryId)));
   };
 
   const handleCreateCategory = () => {
@@ -49,12 +92,12 @@ const AdminCategories = () => {
     setIsCreateModalOpen(true);
   };
 
-  const handleEditCategory = (category) => {
+  const handleEditCategory = (category: AdminCategory) => {
     setEditingCategory(category);
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteCategory = async (id) => {
+  const handleDeleteCategory = async (id: number) => {
     Modal.confirm({
       title: 'Удалить категорию?',
       content: 'Это действие нельзя отменить. Все товары этой категории также будут затронуты.',
@@ -69,18 +112,14 @@ const AdminCategories = () => {
             placement: 'topRight',
           });
           fetchCategories();
-        } catch (error) {
-          notification.error({
-            message: 'Ошибка',
-            description: error.response?.data?.error || 'Не удалось удалить категорию',
-            placement: 'topRight',
-          });
+        } catch (error: any) {
+          showApiError(error, 'Не удалось удалить категорию');
         }
       },
     });
   };
 
-  const handleSaveCategory = async (values) => {
+  const handleSaveCategory = async (values: CategoryPayload) => {
     try {
       if (editingCategory) {
         await adminCategoriesAPI.update(editingCategory.id, values);
@@ -100,17 +139,13 @@ const AdminCategories = () => {
         setIsCreateModalOpen(false);
         fetchCategories();
       }
-    } catch (error) {
-      notification.error({
-        message: 'Ошибка',
-        description: error.response?.data?.error || 'Не удалось сохранить категорию',
-        placement: 'topRight',
-      });
+    } catch (error: any) {
+      showApiError(error, 'Не удалось сохранить категорию');
     }
   };
 
-  const renderCategoryTree = (categories, parentId = null, level = 0) => {
-    const filtered = categories.filter(cat => {
+  const renderCategoryTree = (categoriesList: AdminCategory[], parentId: number | null = null, level = 0) => {
+    const filtered = categoriesList.filter((cat) => {
       if (parentId === null) {
         return !cat.parentId;
       }
@@ -163,7 +198,7 @@ const AdminCategories = () => {
                 </button>
               </div>
             </div>
-            {renderCategoryTree(categories, category.id, level + 1)}
+            {renderCategoryTree(categoriesList, category.id, level + 1)}
           </li>
         ))}
       </ul>
@@ -244,9 +279,17 @@ const AdminCategories = () => {
   );
 };
 
+type CategoryModalProps = {
+  open: boolean;
+  onCancel: () => void;
+  onSave: (values: CategoryPayload) => void;
+  category: AdminCategory | null;
+  categories: AdminCategory[];
+};
+
 // Модальное окно для создания/редактирования категории
-const CategoryModal = ({ open, onCancel, onSave, category, categories }) => {
-  const [formData, setFormData] = useState({
+const CategoryModal: React.FC<CategoryModalProps> = ({ open, onCancel, onSave, category, categories }) => {
+  const [formData, setFormData] = useState<CategoryFormState>({
     name: '',
     slug: '',
     parentId: null,
@@ -296,7 +339,10 @@ const CategoryModal = ({ open, onCancel, onSave, category, categories }) => {
     }
 
     const skuCodeNum = formData.skuCode === '' ? null : parseInt(formData.skuCode, 10);
-    if (formData.skuCode !== '' && (isNaN(skuCodeNum) || skuCodeNum < 1 || skuCodeNum > 99)) {
+    if (
+      formData.skuCode !== '' &&
+      (skuCodeNum === null || Number.isNaN(skuCodeNum) || skuCodeNum < 1 || skuCodeNum > 99)
+    ) {
       notification.warning({
         message: 'Код SKU должен быть числом от 1 до 99',
         placement: 'topRight',
@@ -315,7 +361,7 @@ const CategoryModal = ({ open, onCancel, onSave, category, categories }) => {
       parentId: formData.parentId || null,
       description: formData.description || null,
       imageUrl: formData.imageUrl || null,
-      displayOrder: parseInt(formData.displayOrder) || 0,
+      displayOrder: formData.displayOrder || 0,
       skuCode: formData.skuCode === '' ? null : skuCodeNum,
       skuAutoGenerate: formData.skuAutoGenerate,
       listCombinationsSeparately: formData.listCombinationsSeparately,
@@ -323,7 +369,7 @@ const CategoryModal = ({ open, onCancel, onSave, category, categories }) => {
   };
 
   // Фильтруем категории для выбора родителя (исключаем текущую и её дочерние)
-  const availableParents = categories.filter(cat => {
+  const availableParents = categories.filter((cat) => {
     if (!category) return true; // При создании можно выбрать любую
     if (cat.id === category.id) return false; // Нельзя выбрать саму себя
     // TODO: Проверить, что это не дочерняя категория

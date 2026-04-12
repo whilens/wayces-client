@@ -8,6 +8,20 @@
  * @param {Object} productVariants - Объект с вариантами товара
  * @returns {Object} Объект с выбранными вариантами { color: "color-black", storage: "storage-256" }
  */
+/**
+ * Ключ комбинации для URL (как на сервере generateCombinationKey): color-red_size-m
+ * @param {Record<string, string>} variants - { variantKey: optionKey }
+ */
+export const buildCombinationKeyFromVariants = (variants) => {
+  if (!variants || typeof variants !== 'object') return null;
+  const keys = Object.keys(variants);
+  if (!keys.length) return null;
+  return keys
+    .sort()
+    .map((k) => `${k}-${variants[k]}`)
+    .join('_');
+};
+
 export const parseCombinationFromUrl = (combinationString, productVariants) => {
   if (!combinationString || !productVariants) return {};
   

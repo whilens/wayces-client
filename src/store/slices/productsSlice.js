@@ -3,7 +3,7 @@ import { productsAPI } from '../../services/api';
 import { getMockProducts, getMockProductById } from '../../utils/mockData';
 
 // Использовать мок данные или API (переключить через переменную окружения)
-const USE_MOCK_DATA = process.env.REACT_APP_USE_MOCK_DATA === 'true';
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 // Асинхронные действия
 export const fetchProducts = createAsyncThunk(

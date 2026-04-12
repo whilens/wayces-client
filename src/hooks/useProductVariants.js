@@ -6,10 +6,13 @@ import { getImageUrl, getCombinationImage } from '../utils/imageUtils';
 /**
  * Кастомный хук для управления вариантами товара
  * @param {Object} product - Товар с вариантами
- * @param {string} combinationFromUrl - Комбинация из URL
+ * @param {{ combination: string|null, combinationId: string|null }} initialUrlParams — снимок query только при смене маршрута товара (`/products/:id`), чтобы обновление URL при смене комплектации не сбрасывало выбор
+ * @param {string|undefined} routeProductId — `id` из `/products/:id`, чтобы не инициализировать варианты, пока в сторе ещё предыдущий товар
  * @returns {Object} Состояние и вычисляемые значения вариантов
  */
-export const useProductVariants = (product, combinationFromUrl) => {
+export const useProductVariants = (product, initialUrlParams, routeProductId) => {
+  const combinationFromUrl = initialUrlParams?.combination ?? null;
+  const combinationIdFromUrl = initialUrlParams?.combinationId ?? null;
   const [selectedVariants, setSelectedVariants] = useState({});
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
@@ -41,12 +44,33 @@ export const useProductVariants = (product, combinationFromUrl) => {
     return map;
   }, [product]);
 
-  // Инициализация выбранных вариантов: только существующая и с остатком > 0
+  // Инициализация выбранных вариантов
   useEffect(() => {
+    if (routeProductId && product?.id != null && String(product.id) !== String(routeProductId)) {
+      setSelectedVariants({});
+      setSelectedImageIndex(0);
+      return;
+    }
     if (product?.variants) {
-      const parsedVariants = combinationFromUrl
-        ? parseCombinationFromUrl(combinationFromUrl, product.variants)
-        : {};
+      let parsedVariants = {};
+      let explicitFromId = false;
+
+      const idRaw = combinationIdFromUrl != null ? String(combinationIdFromUrl).trim() : '';
+      if (idRaw && /^\d+$/.test(idRaw) && product.combinations?.length) {
+        const cid = parseInt(idRaw, 10);
+        const comb = product.combinations.find(
+          (c) => c.id === cid || Number(c.id) === cid
+        );
+        if (comb?.variants && Object.keys(comb.variants).length > 0) {
+          parsedVariants = { ...comb.variants };
+          explicitFromId = true;
+        }
+      }
+
+      if (!explicitFromId && combinationFromUrl) {
+        parsedVariants = parseCombinationFromUrl(combinationFromUrl, product.variants) || {};
+      }
+
       const initialVariants = {};
       Object.keys(product.variants).forEach((key) => {
         initialVariants[key] = parsedVariants[key] || product.variants[key].default;
@@ -61,11 +85,15 @@ export const useProductVariants = (product, combinationFromUrl) => {
       const entry = combinationsMap.get(initialKey);
       const inStock = entry && entry.stockQuantity > 0;
 
-      if (inStock) {
+      // Прямая ссылка по combinationId: показываем выбранную комплектацию даже при нулевом остатке
+      if (explicitFromId) {
+        setSelectedVariants(initialVariants);
+      } else if (inStock) {
         setSelectedVariants(initialVariants);
       } else {
-        // Подставляем первую комплектацию с остатком > 0
-        const firstInStock = product.combinations.find((c) => c.isActive !== false && (c.stockQuantity ?? 0) > 0);
+        const firstInStock = product.combinations?.find(
+          (c) => c.isActive !== false && (c.stockQuantity ?? 0) > 0
+        );
         if (firstInStock?.variants && Object.keys(firstInStock.variants).length > 0) {
           setSelectedVariants({ ...firstInStock.variants });
         } else {
@@ -77,7 +105,7 @@ export const useProductVariants = (product, combinationFromUrl) => {
       setSelectedVariants({});
       setSelectedImageIndex(0);
     }
-  }, [product, combinationFromUrl, combinationsMap]);
+  }, [product, combinationsMap, initialUrlParams, routeProductId]);
 
   // Получение текущих изображений на основе выбранных вариантов
   const currentImages = useMemo(() => {
