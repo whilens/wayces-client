@@ -8,13 +8,21 @@ export const getImageUrl = (imagePath) => {
     return '';
   }
 
-  // Если уже полный URL (начинается с http:// или https://), возвращаем как есть
+  // Полный URL: отдаём как есть, кроме зашитых в данные dev-URL localhost:5000 — иначе на проде/без бэка картинки ломаются
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    try {
+      const u = new URL(imagePath);
+      if (/^(localhost|127\.0\.0\.1)$/i.test(u.hostname) && u.pathname.startsWith('/uploads')) {
+        return `${u.pathname}${u.search}`;
+      }
+    } catch {
+      /* ignore */
+    }
     return imagePath;
   }
 
   // База API: полный URL или относительный /api (тогда картинки — относительные /uploads, см. proxy в vite)
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
   const SERVER_BASE_URL = String(API_BASE_URL)
     .replace(/\/?api\/?$/i, '')
     .replace(/\/$/, '');
