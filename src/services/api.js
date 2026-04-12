@@ -3,8 +3,8 @@ import { store } from '../store/store';
 import { setAccessToken, setAdmin } from '../store/slices/authSlice';
 import { setUserAccessToken } from '../store/slices/userSlice';
 
-// Базовый URL API (можно вынести в .env)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Базовый URL API: в dev через Vite proxy задаётся VITE_API_URL=/api; в проде — относительный путь на тот же домен (не хардкодить localhost)
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Создаем экземпляр axios с базовой конфигурацией
 const api = axios.create({
