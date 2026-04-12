@@ -13,10 +13,11 @@ export const getImageUrl = (imagePath) => {
     return imagePath;
   }
 
-  // Получаем базовый URL бэкенда из переменной окружения или используем дефолтный
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-  // Убираем /api из конца, чтобы получить базовый URL сервера
-  const SERVER_BASE_URL = API_BASE_URL.replace('/api', '');
+  // База API: полный URL или относительный /api (тогда картинки — относительные /uploads, см. proxy в vite)
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const SERVER_BASE_URL = String(API_BASE_URL)
+    .replace(/\/?api\/?$/i, '')
+    .replace(/\/$/, '');
 
   // Убираем начальный слэш, если он есть, чтобы избежать двойных слэшей
   const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;

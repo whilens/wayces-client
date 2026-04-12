@@ -720,7 +720,11 @@ const Account = () => {
                     {favoriteItems.map((fav) => (
                       <div key={fav.id} className="account__favorite-item">
                         <img
-                          src={fav.product?.defaultImage || '/placeholder.png'}
+                          src={
+                            fav.product?.defaultImage
+                              ? getImageUrl(fav.product.defaultImage)
+                              : '/placeholder.png'
+                          }
                           alt={fav.product?.name}
                           className="account__favorite-image"
                         />

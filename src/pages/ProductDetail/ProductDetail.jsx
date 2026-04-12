@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchProductById, clearCurrentProduct } from '../../store/slices/productsSlice';
 import { addItem } from '../../store/slices/cartSlice';
 import { formatPrice, calculateDiscountedPrice } from '../../utils/helpers';
-import { generateVariantString } from '../../utils/variantHelpers';
+import { generateVariantString, buildCombinationKeyFromVariants } from '../../utils/variantHelpers';
 import { useProductVariants } from '../../hooks/useProductVariants';
 import { ROUTES } from '../../utils/constants';
 import ProductReviews from '../../components/ProductReviews/ProductReviews';
@@ -19,11 +19,17 @@ const ProductDetail = () => {
   const dispatch = useAppDispatch();
   const { currentProduct, isLoading, error } = useAppSelector((state) => state.products);
   
-  // Получаем комбинацию из URL параметров (оптимизировано)
-  const [searchParams] = useSearchParams();
-  const combinationFromUrl = searchParams.get('combination');
-  
-  // Используем кастомный хук для управления вариантами
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Снимок query при открытии карточки этого товара (только смена :id в маршруте), иначе при обновлении ?combination сбросит выбор
+  const initialUrlParams = useMemo(
+    () => ({
+      combination: searchParams.get('combination'),
+      combinationId: searchParams.get('combinationId'),
+    }),
+    [id]
+  );
+
   const {
     selectedVariants,
     selectedImageIndex,
@@ -35,7 +41,39 @@ const ProductDetail = () => {
     isOptionAvailable,
     isCombinationAvailable,
     currentCombination,
-  } = useProductVariants(currentProduct, combinationFromUrl);
+  } = useProductVariants(currentProduct, initialUrlParams, id);
+
+  // Обновляем query при смене комплектации (шаринг ссылки, история с replace)
+  useEffect(() => {
+    if (!currentProduct?.variants) return;
+    if (id && String(currentProduct.id) !== String(id)) return;
+    if (!Object.keys(selectedVariants).length) return;
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('combination');
+    next.delete('combinationId');
+
+    const hasDbCombinations = (currentProduct.combinations?.length ?? 0) > 0;
+    if (hasDbCombinations && currentCombination?.id != null) {
+      next.set('combinationId', String(currentCombination.id));
+    } else {
+      const key = buildCombinationKeyFromVariants(selectedVariants);
+      if (key) next.set('combination', key);
+    }
+
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [
+    id,
+    selectedVariants,
+    currentCombination,
+    currentProduct?.id,
+    currentProduct?.variants,
+    currentProduct?.combinations?.length,
+    searchParams,
+    setSearchParams,
+  ]);
 
   // Можно добавить в корзину: нет вариантов — всегда; есть варианты — только существующая комплектация с остатком > 0
   const canAddToCart = !currentProduct?.combinations?.length || (currentCombination && (currentCombination.stockQuantity ?? 0) > 0);
