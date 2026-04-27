@@ -1,0 +1,86 @@
+/**
+ * Утилиты для работы с вариантами товаров
+ */
+
+/**
+ * Парсинг комбинации вариантов из URL строки
+ * @param {string} combinationString - Строка комбинации вида "color-black_storage-256"
+ * @param {Object} productVariants - Объект с вариантами товара
+ * @returns {Object} Объект с выбранными вариантами { color: "color-black", storage: "storage-256" }
+ */
+/**
+ * Ключ комбинации для URL (как на сервере generateCombinationKey): color-red_size-m
+ * @param {Record<string, string>} variants - { variantKey: optionKey }
+ */
+export const buildCombinationKeyFromVariants = (variants: Record<string, string>) => {
+  if (!variants || typeof variants !== 'object') return null;
+  const keys = Object.keys(variants);
+  if (!keys.length) return null;
+  return keys
+    .sort()
+    .map((k) => `${k}-${variants[k]}`)
+    .join('_');
+};
+
+type VariantOption = { id: string; value?: string };
+type ProductVariant = { options: VariantOption[] };
+type ProductVariantsMap = Record<string, ProductVariant>;
+export const parseCombinationFromUrl = (
+  combinationString: string,
+  productVariants: ProductVariantsMap
+) => {
+  if (!combinationString || !productVariants) return {};
+  
+  const variantPairs = combinationString.split('_');
+  const initialVariants: Record<string, string> = {};
+  
+  variantPairs.forEach((pair: string) => {
+    const parts = pair.split('-');
+    if (parts.length >= 2) {
+      const variantKey = parts[0];
+      const optionId = parts.slice(1).join('-'); // На случай если в ID есть дефисы
+      
+      if (productVariants[variantKey]) {
+        // Ищем опцию по полному ID или частичному совпадению
+        const option = productVariants[variantKey].options.find(
+          (opt: VariantOption) =>
+            opt.id === optionId || opt.id.endsWith(optionId) || opt.id.includes(optionId)
+        );
+        if (option) {
+          initialVariants[variantKey] = option.id;
+        }
+      }
+    }
+  });
+  
+  return initialVariants;
+};
+
+/**
+ * Генерация строки вариантов для отображения
+ * @param {Object} selectedVariants - Выбранные варианты
+ * @param {Object} productVariants - Объект с вариантами товара
+ * @returns {string} Строка вида "Цвет: Черный, Память: 256 ГБ"
+ */
+export const generateVariantString = (
+  selectedVariants: Record<string, string>,
+  productVariants: Record<string, { name: string; options: Array<{ id: string; value: string }> }>
+) => {
+  if (!selectedVariants || !productVariants || Object.keys(selectedVariants).length === 0) {
+    return '';
+  }
+
+  return Object.keys(selectedVariants)
+    .map((key) => {
+      const variant = productVariants[key];
+      if (!variant) return '';
+      
+      const option = variant.options.find((opt) => opt.id === selectedVariants[key]);
+      if (!option) return '';
+      
+      return `${variant.name}: ${option.value}`;
+    })
+    .filter(Boolean)
+    .join(', ');
+};
+
