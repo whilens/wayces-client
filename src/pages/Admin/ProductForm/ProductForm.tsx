@@ -107,6 +107,68 @@ type ProductSpec = {
   options?: string[] | null;
 };
 
+type ConfigSpecRow = {
+  key: string;
+  label?: string;
+  type?: string;
+  options?: string[];
+};
+
+/** Шаблон категории (БД + shoes.js) + сохранённые значения товара */
+function mergeSpecifications(configSpecs: ConfigSpecRow[], productSpecs: ProductSpec[]): ProductSpec[] {
+  const byKey = new Map(productSpecs.filter((s) => s.key).map((s) => [s.key, s]));
+  return configSpecs.map((cfg) => ({
+    key: cfg.key,
+    label: cfg.label,
+    type: cfg.type,
+    options: cfg.options || null,
+    value: byKey.get(cfg.key)?.value ?? '',
+  }));
+}
+
+function mergeAvailableOptions(
+  configOptions: VariantOption[] = [],
+  productOptions: VariantOption[] = []
+): VariantOption[] {
+  const byKey = new Map<string, VariantOption>();
+  for (const o of configOptions) byKey.set(o.key, o);
+  for (const o of productOptions) {
+    if (!byKey.has(o.key)) byKey.set(o.key, o);
+  }
+  return Array.from(byKey.values());
+}
+
+function mergeVariantsWithConfig(
+  configVariants: NonNullable<CategoryConfig['variants']>,
+  productVariants: VariantRow[]
+): VariantRow[] {
+  const productByKey = new Map(productVariants.map((v) => [v.key, v]));
+
+  return configVariants.map((cv, i) => {
+    const existing = productByKey.get(cv.key);
+    const configOptions = cv.options || [];
+    if (existing) {
+      return {
+        ...existing,
+        name: existing.name || cv.name,
+        type: existing.type || cv.type || 'button',
+        displayOrder: existing.displayOrder ?? i,
+        options: existing.options || [],
+        availableOptions: mergeAvailableOptions(configOptions, existing.options || []),
+      };
+    }
+    return {
+      key: cv.key,
+      name: cv.name,
+      type: cv.type || 'button',
+      displayOrder: i,
+      isRequired: true,
+      options: [],
+      availableOptions: configOptions,
+    };
+  });
+}
+
 function toErrorMessage(error: unknown, fallback: string): string {
   if (error && typeof error === 'object') {
     const e = error as { response?: { data?: { error?: string } }; message?: string };
@@ -159,10 +221,9 @@ const ProductForm = () => {
     }
   }, [id]);
 
-  // Шаг 2: загрузка конфига категории при входе, если ещё не загружен
   useEffect(() => {
     if (currentStep === 2 && formData.categoryId && !categoryConfig) {
-      loadCategoryConfig(formData.categoryId, isEditMode);
+      loadCategoryConfig(formData.categoryId, { specs: specifications, variants });
     }
   }, [currentStep, formData.categoryId]);
 
@@ -178,26 +239,9 @@ const ProductForm = () => {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
 
-  // Шаг 2: подтянуть все варианты из конфига (добавить отсутствующие в state)
   useEffect(() => {
     if (currentStep !== 2 || !categoryConfig?.variants?.length) return;
-    const cfgVariants = categoryConfig?.variants ?? [];
-    setVariants((prev) => {
-      const next = [...prev];
-      for (const cv of cfgVariants) {
-        if (next.some((v) => v.key === cv.key)) continue;
-        next.push({
-          key: cv.key,
-          name: cv.name,
-          type: cv.type || 'button',
-          displayOrder: next.length,
-          isRequired: true,
-          options: [],
-          availableOptions: cv.options || [],
-        });
-      }
-      return next;
-    });
+    setVariants((prev) => mergeVariantsWithConfig(categoryConfig.variants!, prev));
   }, [currentStep, categoryConfig?.variants]);
 
   const fetchCategories = async () => {
@@ -225,18 +269,16 @@ const ProductForm = () => {
         discountValue: String(product.discountValue || ''),
       });
 
-      // Загружаем характеристики
-      if (product.specifications) {
-        const specs: ProductSpec[] = Object.entries(product.specifications).map(([key, value]) => ({
-          key,
-          value: String(value ?? ''),
-        }));
-        setSpecifications(specs);
-      }
+      const productSpecs: ProductSpec[] = product.specifications
+        ? Object.entries(product.specifications).map(([key, value]) => ({
+            key,
+            value: String(value ?? ''),
+          }))
+        : [];
 
-      // Загружаем варианты
+      let formattedVariants: VariantRow[] = [];
       if (product.variants && product.variants.length > 0) {
-        const formattedVariants: VariantRow[] = product.variants.map((variant) => ({
+        formattedVariants = product.variants.map((variant) => ({
           key: variant.variantKey,
           name: variant.variantName,
           type: variant.variantType,
@@ -256,8 +298,10 @@ const ProductForm = () => {
               }))
             : [],
         }));
-        setVariants(formattedVariants);
       }
+
+      setSpecifications(productSpecs);
+      setVariants(formattedVariants);
 
       // Загружаем комплектации
       if (product.combinations && product.combinations.length > 0) {
@@ -274,9 +318,11 @@ const ProductForm = () => {
         setCombinations([]);
       }
 
-      // Загружаем конфигурацию категории для возможности добавления вариантов
       if (product.categoryId) {
-        loadCategoryConfig(product.categoryId, true); // preserveVariants = true, чтобы не перезаписать существующие варианты
+        await loadCategoryConfig(product.categoryId, {
+          specs: productSpecs,
+          variants: formattedVariants,
+        });
       }
 
       // Загружаем существующие изображения
@@ -327,64 +373,42 @@ const ProductForm = () => {
     
     // При изменении категории загружаем конфигурацию
     if (name === 'categoryId' && value) {
-      loadCategoryConfig(value, isEditMode); // При редактировании сохраняем существующие варианты
+      loadCategoryConfig(value, { specs: specifications, variants });
     } else if (name === 'categoryId' && !value) {
-      // Если категория сброшена, очищаем конфигурацию
       setCategoryConfig(null);
+      setSpecifications([]);
     }
   };
 
-  // Загрузка конфигурации категории
-  const loadCategoryConfig = async (categoryId: string | number, preserveVariants = false) => {
+  type ProductMergeState = { specs?: ProductSpec[]; variants?: VariantRow[] };
+
+  const loadCategoryConfig = async (
+    categoryId: string | number,
+    mergeWith?: ProductMergeState
+  ) => {
     if (!categoryId) {
       setCategoryConfig(null);
       return;
     }
-    
+
     try {
       const response = await adminCategoriesAPI.getConfig(categoryId);
       const config = response.data as CategoryConfig;
-      
-      // Сохраняем конфигурацию для использования при добавлении вариантов
       setCategoryConfig(config);
 
-      // При редактировании товара подставляем доступные значения вариантов из конфига (для чекбоксов)
-      if (preserveVariants && config?.variants?.length) {
-        const cfgVariants = config.variants ?? [];
+      const configSpecs = (config.specifications || []) as ConfigSpecRow[];
+      setSpecifications(
+        mergeSpecifications(configSpecs, mergeWith?.specs ?? [])
+      );
+
+      if (config.variants?.length) {
         setVariants((prev) =>
-          prev.map((v) => ({
-            ...v,
-            availableOptions:
-              v.availableOptions ??
-              cfgVariants.find((cv: { key: string; options?: VariantOption[] }) => cv.key === v.key)?.options ??
-              [],
-          }))
+          mergeVariantsWithConfig(config.variants!, mergeWith?.variants ?? prev)
         );
       }
-      
-      // Заполняем характеристики из конфигурации (только если не редактируем)
-      if (!preserveVariants) {
-        if (config.specifications && config.specifications.length > 0) {
-          const newSpecs = config.specifications.map((spec: { key: string; label?: string; type?: string; options?: string[] }) => ({
-            key: spec.key,
-            label: spec.label,
-            type: spec.type,
-            options: spec.options || null,
-            value: '', // Значение заполняет админ
-          }));
-          setSpecifications(newSpecs);
-        } else {
-          setSpecifications([]);
-        }
-      }
-      
-      // Варианты НЕ добавляем автоматически - только при нажатии "+ Добавить вариант"
     } catch (error) {
       console.error('Ошибка загрузки конфигурации категории:', error);
       setCategoryConfig(null);
-      if (!preserveVariants) {
-        setSpecifications([]);
-      }
     }
   };
 
@@ -1263,24 +1287,27 @@ const ProductForm = () => {
           {/* Характеристики */}
           <div className="admin-product-form__section">
             <h2 className="admin-product-form__section-title">Характеристики</h2>
-            {specifications.length === 0 ? (
+            {!formData.categoryId ? (
               <p className="admin-product-form__hint">
-                Выберите категорию, чтобы загрузить предопределенные характеристики
+                Выберите категорию — появятся характеристики из настроек категории и шаблона (shoes.js).
+              </p>
+            ) : specifications.length === 0 ? (
+              <p className="admin-product-form__hint">
+                У категории нет настроенных характеристик. Добавьте их в «Настроить характеристики и варианты».
               </p>
             ) : (
               specifications.map((spec, index) => (
-                <div key={index} className="admin-product-form__specification-row">
+                <div key={spec.key} className="admin-product-form__specification-row">
                   <label className="admin-product-form__spec-label">
-                    {spec.label || spec.key || 'Характеристика'}:
+                    {spec.label || spec.key}:
                   </label>
                   {spec.type === 'select' && spec.options ? (
                     <select
                       value={spec.value || ''}
                       onChange={(e) => handleSpecificationChange(index, 'value', e.target.value)}
                       className="admin-product-form__input"
-                      required
                     >
-                      <option value="">Выберите значение</option>
+                      <option value="">Не указано</option>
                       {spec.options.map((option) => (
                         <option key={option} value={option}>
                           {option}
@@ -1294,14 +1321,8 @@ const ProductForm = () => {
                       value={spec.value || ''}
                       onChange={(e) => handleSpecificationChange(index, 'value', e.target.value)}
                       className="admin-product-form__input"
-                      required
                     />
                   )}
-                  <input
-                    type="hidden"
-                    value={spec.key}
-                    readOnly
-                  />
                 </div>
               ))
             )}
@@ -1333,18 +1354,9 @@ const ProductForm = () => {
                   return;
                 }
                 // При первом переходе на шаг 2 заполняем варианты из конфига категории
-                if (categoryConfig?.variants?.length && variants.length === 0) {
-                  const cfgVariants = categoryConfig.variants ?? [];
-                  setVariants(
-                    cfgVariants.map((v, i) => ({
-                      key: v.key,
-                      name: v.name,
-                      type: v.type || 'button',
-                      displayOrder: i,
-                      isRequired: true,
-                      options: [],
-                      availableOptions: v.options || [],
-                    }))
+                if (categoryConfig?.variants?.length) {
+                  setVariants((prev) =>
+                    mergeVariantsWithConfig(categoryConfig.variants!, prev)
                   );
                 }
                 setCurrentStep(2);
@@ -1378,37 +1390,44 @@ const ProductForm = () => {
                   const vIndex = variants.findIndex((v) => v.key === configVariant.key);
                   if (vIndex === -1) return null;
                   const variant = variants[vIndex];
+                  const presetOptions = variant.availableOptions || [];
                   return (
                     <div key={variant.key} className="admin-product-form__variant-group admin-product-form__variant-group--step2">
                       <h3 className="admin-product-form__variant-step2-title">{variant.name}</h3>
-                      <div className="admin-product-form__option-checkboxes admin-product-form__option-checkboxes--step2">
-                        {(variant.availableOptions || []).map((opt) => {
-                          const isSelected = variant.options?.some((o) => o.key === opt.key);
-                          return (
-                            <label
-                              key={opt.key}
-                              className="admin-product-form__option-checkbox-label"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={!!isSelected}
-                                onChange={() => toggleVariantOptionFromList(vIndex, opt)}
-                              />
-                              {variant.type === 'color' && opt.colorCode && (
-                                <span
-                                  className="admin-product-form__option-color-swatch"
-                                  style={{ backgroundColor: opt.colorCode }}
-                                  title={opt.value}
-                                />
-                              )}
-                              <span>{opt.value}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                      {variant.options?.length > 0 && (
+                      {presetOptions.length === 0 ? (
                         <p className="admin-product-form__hint admin-product-form__hint--small">
-                          Выбрано: {variant.options.length}
+                          Нет значений в настройках категории. Добавьте их в «Настроить характеристики и варианты».
+                        </p>
+                      ) : (
+                        <div className="admin-product-form__option-checkboxes admin-product-form__option-checkboxes--step2">
+                          {presetOptions.map((opt) => {
+                            const isSelected = variant.options?.some((o) => o.key === opt.key);
+                            return (
+                              <label
+                                key={opt.key}
+                                className="admin-product-form__option-checkbox-label"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={!!isSelected}
+                                  onChange={() => toggleVariantOptionFromList(vIndex, opt)}
+                                />
+                                {variant.type === 'color' && opt.colorCode && (
+                                  <span
+                                    className="admin-product-form__option-color-swatch"
+                                    style={{ backgroundColor: opt.colorCode }}
+                                    title={opt.value}
+                                  />
+                                )}
+                                <span>{opt.value}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {(variant.options?.length ?? 0) > 0 && (
+                        <p className="admin-product-form__hint admin-product-form__hint--small">
+                          Выбрано: {variant.options?.length}
                         </p>
                       )}
                     </div>
