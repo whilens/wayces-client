@@ -72,13 +72,13 @@ const CartItem = React.memo(({ item }: CartItemProps) => {
       <div className="cart-item__total">
         {formattedItemTotal}
       </div>
-      <button
+      {/* <button
         className="cart-item__remove"
         onClick={handleRemove}
         aria-label="Удалить товар"
       >
         ×
-      </button>
+      </button> */}
     </div>
   );
 }, (prevProps: Readonly<CartItemProps>, nextProps: Readonly<CartItemProps>) => {
