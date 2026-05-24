@@ -7,6 +7,7 @@ import { toggleTheme } from '../../store/slices/uiSlice';
 import { ROUTES } from '../../utils/constants';
 import { throttle } from '../../utils/throttle';
 import SearchBar from '../SearchBar/SearchBar';
+import UserAvatar from '../UserAvatar/UserAvatar';
 import './Header.css';
 
 const Header = React.memo(() => {
@@ -17,7 +18,7 @@ const Header = React.memo(() => {
   const dispatch = useAppDispatch();
   const totalQuantity = useAppSelector(selectCartTotalQuantity);
   const admin = useAppSelector(selectAuthAdmin);
-  const { isAuthenticated } = useAppSelector((state) => state.user);
+  const { isAuthenticated, user } = useAppSelector((state) => state.user);
   const theme = useAppSelector((state) => state.ui.theme);
   const headerRef = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -156,11 +157,18 @@ const Header = React.memo(() => {
           {!admin && (
             <>
               {isAuthenticated && (
-                <Link 
-                  to="/account" 
-                  className={`header__nav-link ${isActive('/account') ? 'header__nav-link--active' : ''}`}
+                <Link
+                  to="/account"
+                  className={`header__account-link ${isActive('/account') ? 'header__account-link--active' : ''}`}
+                  title="Личный кабинет"
                 >
-                  Личный кабинет
+                  <UserAvatar
+                    src={user?.avatar}
+                    firstName={user?.firstName}
+                    lastName={user?.lastName}
+                    size="sm"
+                  />
+                  <span className="header__account-text">Кабинет</span>
                 </Link>
               )}
               <Link to={ROUTES.CART} className="header__cart-button">
@@ -212,11 +220,17 @@ const Header = React.memo(() => {
             ) : (
               <>
                 {isAuthenticated && (
-                  <Link 
-                    to="/account" 
-                    className={`header__mobile-nav-link ${isActive('/account') ? 'header__mobile-nav-link--active' : ''}`}
+                  <Link
+                    to="/account"
+                    className={`header__mobile-nav-link header__mobile-account ${isActive('/account') ? 'header__mobile-nav-link--active' : ''}`}
                     onClick={() => setIsMenuOpen(false)}
                   >
+                    <UserAvatar
+                      src={user?.avatar}
+                      firstName={user?.firstName}
+                      lastName={user?.lastName}
+                      size="sm"
+                    />
                     Личный кабинет
                   </Link>
                 )}

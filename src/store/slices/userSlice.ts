@@ -1,7 +1,14 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import { userAuthAPI } from '../../services/api';
 
-type User = { id?: number; firstName?: string; lastName?: string; phone?: string; email?: string } | null;
+type User = {
+  id?: number;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  email?: string;
+  avatar?: string | null;
+} | null;
 type UserState = {
   user: User;
   accessToken: string | null;

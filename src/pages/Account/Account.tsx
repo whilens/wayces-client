@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { logoutUser } from '../../store/slices/userSlice';
+import { logoutUser, setUser } from '../../store/slices/userSlice';
 import { fetchFavorites } from '../../store/slices/favoritesSlice';
 import { accountAPI } from '../../services/api';
 import { formatPrice } from '../../utils/helpers';
 import { useAsyncDataLoader } from '../../hooks/useAsyncDataLoader';
 import { buildFormData } from '../../utils/formDataBuilder';
-import { getImageUrl } from '../../utils/imageUtils';
-import { notification, Checkbox } from 'antd';
+import { notification } from 'antd';
+import UserAvatar from '../../components/UserAvatar/UserAvatar';
 import { pushSubscriptionsAPI } from '../../services/api';
 import './Account.css';
 
@@ -138,6 +138,16 @@ const Account = () => {
         avatar: userData.avatar || null,
       });
       setAvatarPreview(userData.avatar || null);
+      dispatch(
+        setUser({
+          id: userData.id,
+          phone: userData.phone,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          avatar: userData.avatar || null,
+        })
+      );
     } catch (err) {
       console.error('Ошибка загрузки профиля:', err);
     } finally {
@@ -349,9 +359,25 @@ const Account = () => {
       );
 
       const response = await accountAPI.updateProfile(formData);
-      setProfile(response.data.user);
-      setAvatarPreview(response.data.user.avatar);
-      
+      const updated = response.data.user;
+      setProfile({
+        firstName: updated.firstName || '',
+        lastName: updated.lastName || '',
+        email: updated.email || '',
+        avatar: updated.avatar || null,
+      });
+      setAvatarPreview(updated.avatar || null);
+      dispatch(
+        setUser({
+          id: updated.id,
+          phone: updated.phone,
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+          email: updated.email,
+          avatar: updated.avatar || null,
+        })
+      );
+
       notification.success({
         message: 'Профиль обновлен',
         placement: 'topRight',
@@ -518,10 +544,12 @@ const Account = () => {
                 <form onSubmit={handleSaveProfile} className="account__profile-form">
                   <div className="account__avatar-section">
                     <div className="account__avatar-wrapper">
-                      <img
-                        src={avatarPreview || '/placeholder-avatar.png'}
-                        alt="Аватар"
-                        className="account__avatar"
+                      <UserAvatar
+                        src={avatarPreview}
+                        firstName={profile.firstName}
+                        lastName={profile.lastName}
+                        size="lg"
+                        className="account__avatar-image"
                       />
                       <label htmlFor="avatar-input" className="account__avatar-upload">
                         Изменить фото
@@ -584,18 +612,27 @@ const Account = () => {
                     <p className="account__hint">Телефон нельзя изменить</p>
                   </div>
 
-                  <div className="account__form-group">
-                    <Checkbox
-                      checked={pushEnabled}
-                      onChange={(e) => handlePushToggle(e.target.checked)}
-                      disabled={isTogglingPush || isLoadingPushStatus || !('serviceWorker' in navigator) || !('PushManager' in window)}
-                    >
-                      Получать push-уведомления о новых товарах и скидках
-                    </Checkbox>
+                  <div className="account__form-group account__form-group--push">
+                    <label className="account__push-toggle">
+                      <input
+                        type="checkbox"
+                        className="account__push-checkbox"
+                        checked={pushEnabled}
+                        onChange={(e) => handlePushToggle(e.target.checked)}
+                        disabled={
+                          isTogglingPush ||
+                          isLoadingPushStatus ||
+                          !('serviceWorker' in navigator) ||
+                          !('PushManager' in window)
+                        }
+                      />
+                      <span className="account__push-checkbox-ui" aria-hidden />
+                      <span className="account__push-label">
+                        Получать push-уведомления о новых товарах и скидках
+                      </span>
+                    </label>
                     {isTogglingPush && (
-                      <p className="account__hint" style={{ marginTop: '0.5rem' }}>
-                        Обновление настроек...
-                      </p>
+                      <p className="account__hint account__hint--push">Обновление настроек...</p>
                     )}
                   </div>
 
