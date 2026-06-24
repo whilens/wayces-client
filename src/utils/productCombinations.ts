@@ -17,8 +17,6 @@ type Product = {
   image?: string;
   category?: string;
   description?: string;
-  rating?: number;
-  reviews?: number;
   specifications?: Record<string, unknown>;
   variants?: Record<string, Variant>;
 };
@@ -31,8 +29,6 @@ type ProductCombination = {
   image: string;
   category?: string;
   description?: string;
-  rating?: number;
-  reviews?: number;
   specifications?: Record<string, unknown>;
   combinationKey: string | null;
   variants: Record<string, string> | null;
@@ -54,8 +50,6 @@ export const generateProductCombinations = (product: Product): ProductCombinatio
         image: getImageUrl(product.defaultImage || product.image || ''),
         category: product.category,
         description: product.description,
-        rating: product.rating,
-        reviews: product.reviews,
         combinationKey: null,
         variants: null,
         isCombination: false,
@@ -108,8 +102,6 @@ export const generateProductCombinations = (product: Product): ProductCombinatio
         image: combinationImage,
         category: product.category,
         description: product.description,
-        rating: product.rating,
-        reviews: product.reviews,
         specifications: product.specifications,
         combinationKey: combinationKey,
         variants: { ...currentCombination },

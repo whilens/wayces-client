@@ -30,7 +30,6 @@ type VariantOption = {
   images?: Array<string | UploadImage>;
   isDefault?: boolean;
   isAvailable?: boolean;
-  stockQuantity?: number;
   displayOrder?: number;
 };
 
@@ -83,7 +82,6 @@ type ApiProduct = {
       images?: Array<string | UploadImage>;
       isDefault?: boolean;
       isAvailable?: boolean;
-      stockQuantity?: number;
       displayOrder?: number;
     }>;
   }>;
@@ -293,7 +291,6 @@ const ProductForm = () => {
                 images: option.images || [],
                 isDefault: option.isDefault || false,
                 isAvailable: option.isAvailable !== false,
-                stockQuantity: option.stockQuantity || 0,
                 displayOrder: option.displayOrder || 0,
               }))
             : [],
@@ -489,7 +486,6 @@ const ProductForm = () => {
           images: [],
           isDefault: variant.options.length === 0,
           isAvailable: true,
-          stockQuantity: 0,
           displayOrder: variant.options.length,
         },
       ];
@@ -529,7 +525,6 @@ const ProductForm = () => {
       images: [],
       isDefault: i === 0,
       isAvailable: true,
-      stockQuantity: 0,
       displayOrder: i,
     }));
     setVariants((prev) => [
@@ -661,7 +656,6 @@ const ProductForm = () => {
       images: [],
       isDefault: false,
       isAvailable: true,
-      stockQuantity: 0,
       displayOrder: newVariants[variantIndex].options.length,
     });
     setVariants(newVariants);
